@@ -64,7 +64,7 @@ const Window: React.FC<WindowProps> = ({ window }) => {
   return (
     <div
       ref={windowRef}
-      className={`window ${window.isFocused ? 'focused' : ''} ${window.isMaximized ? 'maximized' : ''}`}
+      className={`window ${window.isFocused ? 'focused' : ''} ${window.isMaximized ? 'maximized' : ''} ${isDragging ? 'dragging' : ''}`}
       style={style}
       onMouseDown={() => focusWindow(window.id)}
     >

@@ -1,6 +1,25 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: fluxos-postgres
+    environment:
+      - POSTGRES_USER=fluxos
+      - POSTGRES_PASSWORD=fluxos_dev_password
+      - POSTGRES_DB=fluxos_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - fluxos-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fluxos"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   server:
     build:
       context: ./server
@@ -15,7 +34,11 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=5000
-    command: npm run dev
+      - DATABASE_URL=postgresql://fluxos:fluxos_dev_password@postgres:5432/fluxos_db
+    command: sh -c "npx prisma generate && npx prisma db push && npm run dev"
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - fluxos-network
 
@@ -42,3 +65,6 @@ services:
 networks:
   fluxos-network:
     driver: bridge
+
+volumes:
+  postgres-data:

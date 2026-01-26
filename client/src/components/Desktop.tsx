@@ -3,6 +3,8 @@ import { useDesktop } from '../contexts/DesktopContext';
 import Window from './Window';
 import Taskbar from './Taskbar';
 import DesktopIcon from './DesktopIcon';
+import UserManagement from './UserManagement';
+import GroupManagement from './GroupManagement';
 import { DesktopIcon as DesktopIconType } from '../types/desktop';
 import './Desktop.css';
 
@@ -103,6 +105,40 @@ const Desktop: React.FC = () => {
               <p>Passen Sie Ihr System an</p>
             </div>
           ),
+        });
+      },
+    },
+    {
+      id: 'user-management',
+      name: 'Benutzer',
+      icon: '👥',
+      position: { x: 20, y: 420 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Benutzerverwaltung',
+          icon: '👥',
+          position: { x: 300, y: 100 },
+          size: { width: 900, height: 600 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <UserManagement />,
+        });
+      },
+    },
+    {
+      id: 'group-management',
+      name: 'Gruppen',
+      icon: '👨‍👩‍👧‍👦',
+      position: { x: 20, y: 520 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Gruppenverwaltung',
+          icon: '👨‍👩‍👧‍👦',
+          position: { x: 350, y: 120 },
+          size: { width: 950, height: 650 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <GroupManagement />,
         });
       },
     },
