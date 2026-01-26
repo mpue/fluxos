@@ -1,0 +1,38 @@
+.desktop {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.desktop-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, #0078d4 0%, #005a9e 50%, #00284d 100%);
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+
+.desktop-icons {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 48px;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.windows-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 48px;
+  z-index: 100;
+  pointer-events: none;
+}

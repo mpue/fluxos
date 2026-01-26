@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: fluxos-server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./server/src:/app/src
+      - ./server/package.json:/app/package.json
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+    command: npm run dev
+    networks:
+      - fluxos-network
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: fluxos-client
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./client/src:/app/src
+      - ./client/public:/app/public
+      - ./client/webpack.config.js:/app/webpack.config.js
+      - ./client/package.json:/app/package.json
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - server
+    networks:
+      - fluxos-network
+
+networks:
+  fluxos-network:
+    driver: bridge
