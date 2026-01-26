@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './UserManagement.css';
 
+interface Group {
+  id: string;
+  name: string;
+}
+
 interface User {
   id: string;
   username: string;
@@ -9,12 +14,19 @@ interface User {
   updatedAt?: string;
 }
 
+interface UserWithGroups extends User {
+  groups?: Group[];
+}
+
 const UserManagement: React.FC = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserWithGroups[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<UserWithGroups | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserWithGroups | null>(null);
+  const [showGroupDialog, setShowGroupDialog] = useState(false);
   
   const [formData, setFormData] = useState({
     username: '',
@@ -24,6 +36,7 @@ const UserManagement: React.FC = () => {
 
   useEffect(() => {
     fetchUsers();
+    fetchGroups();
   }, []);
 
   const fetchUsers = async () => {
@@ -31,11 +44,39 @@ const UserManagement: React.FC = () => {
       const response = await fetch('http://localhost:5000/api/users');
       if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
-      setUsers(data);
+      
+      // Fetch groups for each user
+      const usersWithGroups = await Promise.all(
+        data.map(async (user: User) => {
+          try {
+            const groupsResponse = await fetch('http://localhost:5000/api/groups');
+            const allGroups = await groupsResponse.json();
+            const userGroups = allGroups.filter((group: any) => 
+              group.users.some((u: User) => u.id === user.id)
+            ).map((g: any) => ({ id: g.id, name: g.name }));
+            return { ...user, groups: userGroups };
+          } catch {
+            return { ...user, groups: [] };
+          }
+        })
+      );
+      
+      setUsers(usersWithGroups);
       setLoading(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       setLoading(false);
+    }
+  };
+
+  const fetchGroups = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/groups');
+      if (!response.ok) throw new Error('Failed to fetch groups');
+      const data = await response.json();
+      setGroups(data.map((g: any) => ({ id: g.id, name: g.name })));
+    } catch (err) {
+      console.error('Error fetching groups:', err);
     }
   };
 
@@ -101,6 +142,55 @@ const UserManagement: React.FC = () => {
     setFormData({ username: '', email: '', password: '' });
   };
 
+  const openGroupDialog = (user: UserWithGroups) => {
+    setSelectedUser(user);
+    setShowGroupDialog(true);
+  };
+
+  const addUserToGroup = async (groupId: string) => {
+    if (!selectedUser) return;
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/groups/${groupId}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: selectedUser.id }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add user to group');
+      }
+
+      fetchUsers();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to add user to group');
+    }
+  };
+
+  const removeUserFromGroup = async (groupId: string) => {
+    if (!selectedUser) return;
+
+    try {
+      const response = await fetch(`http://localhost:5000/api/groups/${groupId}/members/${selectedUser.id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to remove user from group');
+
+      fetchUsers();
+      // Update selected user
+      const updatedUser = users.find(u => u.id === selectedUser.id);
+      if (updatedUser) setSelectedUser(updatedUser);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to remove user from group');
+    }
+  };
+
+  const availableGroups = groups.filter(
+    group => !selectedUser?.groups?.some(g => g.id === group.id)
+  );
+
   if (loading) return <div className="user-management-loading">Laden...</div>;
   if (error) return <div className="user-management-error">Fehler: {error}</div>;
 
@@ -164,6 +254,7 @@ const UserManagement: React.FC = () => {
             <tr>
               <th>Benutzername</th>
               <th>E-Mail</th>
+              <th>Gruppen</th>
               <th>Erstellt am</th>
               <th>Aktionen</th>
             </tr>
@@ -171,7 +262,7 @@ const UserManagement: React.FC = () => {
           <tbody>
             {users.length === 0 ? (
               <tr>
-                <td colSpan={4} className="no-users">
+                <td colSpan={5} className="no-users">
                   Keine Benutzer vorhanden
                 </td>
               </tr>
@@ -180,6 +271,14 @@ const UserManagement: React.FC = () => {
                 <tr key={user.id}>
                   <td>{user.username}</td>
                   <td>{user.email}</td>
+                  <td>
+                    <button 
+                      className="btn-groups" 
+                      onClick={() => openGroupDialog(user)}
+                    >
+                      👨‍👩‍👧‍👦 {user.groups?.length || 0}
+                    </button>
+                  </td>
                   <td>{new Date(user.createdAt).toLocaleDateString('de-DE')}</td>
                   <td className="actions">
                     <button 
@@ -201,6 +300,63 @@ const UserManagement: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {showGroupDialog && selectedUser && (
+        <div className="modal-overlay" onClick={() => setShowGroupDialog(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Gruppen für "{selectedUser.username}"</h3>
+              <button className="modal-close" onClick={() => setShowGroupDialog(false)}>×</button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="member-section">
+                <h4>Aktuelle Gruppen ({selectedUser.groups?.length || 0})</h4>
+                <div className="member-list">
+                  {!selectedUser.groups || selectedUser.groups.length === 0 ? (
+                    <p className="no-members">Keine Gruppenzugehörigkeit</p>
+                  ) : (
+                    selectedUser.groups.map(group => (
+                      <div key={group.id} className="member-item">
+                        <div className="member-info">
+                          <span className="member-name">{group.name}</span>
+                        </div>
+                        <button 
+                          className="btn-remove" 
+                          onClick={() => removeUserFromGroup(group.id)}
+                        >
+                          Entfernen
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {availableGroups.length > 0 && (
+                <div className="member-section">
+                  <h4>Zu Gruppe hinzufügen</h4>
+                  <div className="member-list">
+                    {availableGroups.map(group => (
+                      <div key={group.id} className="member-item">
+                        <div className="member-info">
+                          <span className="member-name">{group.name}</span>
+                        </div>
+                        <button 
+                          className="btn-add" 
+                          onClick={() => addUserToGroup(group.id)}
+                        >
+                          Hinzufügen
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
