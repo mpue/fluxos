@@ -5,6 +5,8 @@ import Taskbar from './Taskbar';
 import DesktopIcon from './DesktopIcon';
 import UserManagement from './UserManagement';
 import GroupManagement from './GroupManagement';
+import Browser from './Browser';
+import FileExplorer from './FileExplorer';
 import { DesktopIcon as DesktopIconType } from '../types/desktop';
 import './Desktop.css';
 
@@ -13,10 +15,27 @@ const Desktop: React.FC = () => {
 
   const [desktopIcons] = useState<DesktopIconType[]>([
     {
+      id: 'file-explorer',
+      name: 'Datei-Explorer',
+      icon: '📂',
+      position: { x: 20, y: 20 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Datei-Explorer',
+          icon: '📂',
+          position: { x: 100, y: 80 },
+          size: { width: 900, height: 600 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <FileExplorer />,
+        });
+      },
+    },
+    {
       id: 'my-computer',
       name: 'Dieser PC',
       icon: '🖥️',
-      position: { x: 20, y: 20 },
+      position: { x: 20, y: 120 },
       onDoubleClick: () => {
         addWindow({
           title: 'Dieser PC',
@@ -43,28 +62,6 @@ const Desktop: React.FC = () => {
       },
     },
     {
-      id: 'documents',
-      name: 'Dokumente',
-      icon: '📁',
-      position: { x: 20, y: 120 },
-      onDoubleClick: () => {
-        addWindow({
-          title: 'Dokumente',
-          icon: '📁',
-          position: { x: 150, y: 150 },
-          size: { width: 500, height: 350 },
-          isMinimized: false,
-          isMaximized: false,
-          content: (
-            <div>
-              <h2>Dokumente</h2>
-              <p>Ihre persönlichen Dateien</p>
-            </div>
-          ),
-        });
-      },
-    },
-    {
       id: 'browser',
       name: 'Browser',
       icon: '🌐',
@@ -73,16 +70,11 @@ const Desktop: React.FC = () => {
         addWindow({
           title: 'FluxOS Browser',
           icon: '🌐',
-          position: { x: 200, y: 200 },
-          size: { width: 800, height: 600 },
+          position: { x: 100, y: 80 },
+          size: { width: 1000, height: 700 },
           isMinimized: false,
           isMaximized: false,
-          content: (
-            <div>
-              <h2>FluxOS Browser</h2>
-              <p>Willkommen im Browser</p>
-            </div>
-          ),
+          content: <Browser />,
         });
       },
     },

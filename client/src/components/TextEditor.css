@@ -1,0 +1,89 @@
+.text-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.text-editor-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+}
+
+.text-editor-filename {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.text-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editor-btn {
+  padding: 6px 12px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.editor-btn:hover:not(:disabled) {
+  background: #e8e8e8;
+  border-color: #999;
+}
+
+.editor-btn:active:not(:disabled) {
+  background: #d0d0d0;
+}
+
+.editor-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.text-editor-content {
+  flex: 1;
+  padding: 16px;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  background: white;
+  color: #333;
+}
+
+.text-editor-statusbar {
+  display: flex;
+  gap: 16px;
+  padding: 6px 12px;
+  background: #f0f0f0;
+  border-top: 1px solid #ccc;
+  font-size: 12px;
+  color: #666;
+}
+
+.unsaved-indicator {
+  color: #d13438;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.text-editor-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #d13438;
+  font-size: 14px;
+}

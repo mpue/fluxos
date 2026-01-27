@@ -1,12 +1,15 @@
 import { DesktopProvider } from './contexts/DesktopContext'
+import { FileSystemProvider } from './contexts/FileSystemContext'
 import Desktop from './components/Desktop'
 import './App.css'
 
 function App() {
   return (
-    <DesktopProvider>
-      <Desktop />
-    </DesktopProvider>
+    <FileSystemProvider>
+      <DesktopProvider>
+        <Desktop />
+      </DesktopProvider>
+    </FileSystemProvider>
   )
 }
 
