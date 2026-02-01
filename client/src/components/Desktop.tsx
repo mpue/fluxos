@@ -7,11 +7,14 @@ import UserManagement from './UserManagement';
 import GroupManagement from './GroupManagement';
 import Browser from './Browser';
 import FileExplorer from './FileExplorer';
+import Calculator from './Calculator';
+import Notepad from './Notepad';
 import { DesktopIcon as DesktopIconType } from '../types/desktop';
+import { colorSchemes, getColorScheme } from '../utils/colorSchemes';
 import './Desktop.css';
 
 const Desktop: React.FC = () => {
-  const { windows, addWindow, wallpaper, setWallpaper } = useDesktop();
+  const { windows, addWindow, wallpaper, setWallpaper, colorScheme, setColorScheme } = useDesktop();
   
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; visible: boolean }>({
     x: 0,
@@ -140,6 +143,40 @@ const Desktop: React.FC = () => {
         });
       },
     },
+    {
+      id: 'calculator',
+      name: 'Rechner',
+      icon: '🔢',
+      position: { x: 20, y: 620 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Rechner',
+          icon: '🔢',
+          position: { x: 400, y: 150 },
+          size: { width: 400, height: 550 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <Calculator />,
+        });
+      },
+    },
+    {
+      id: 'notepad',
+      name: 'Notizen',
+      icon: '📝',
+      position: { x: 20, y: 720 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Notizen',
+          icon: '📝',
+          position: { x: 450, y: 100 },
+          size: { width: 700, height: 500 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <Notepad />,
+        });
+      },
+    },
   ]);
 
   // Handle right-click on desktop background
@@ -196,55 +233,108 @@ const Desktop: React.FC = () => {
       title: 'Personalisierung',
       icon: '🎨',
       position: { x: 200, y: 100 },
-      size: { width: 700, height: 650 },
+      size: { width: 750, height: 700 },
       isMinimized: false,
       isMaximized: false,
       content: (
-        <div style={{ padding: '20px' }}>
-          <h2 style={{ marginTop: 0, marginBottom: '20px' }}>Desktop-Hintergrund</h2>
-          <p style={{ marginBottom: '20px', color: '#666' }}>Wählen Sie ein Hintergrundbild für Ihren Desktop</p>
-          
-          {/* Upload Section */}
-          <div style={{
-            marginBottom: '25px',
-            padding: '20px',
-            border: '2px dashed #0078d4',
-            borderRadius: '8px',
-            textAlign: 'center',
-            background: '#f5f5f5'
-          }}>
-            <div style={{ marginBottom: '10px', fontSize: '32px' }}>🖼️</div>
-            <label htmlFor="wallpaper-upload" style={{
-              display: 'inline-block',
-              padding: '10px 20px',
-              background: '#0078d4',
-              color: 'white',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: 'bold'
+        <div style={{ padding: '20px', height: '100%', overflowY: 'auto' }}>
+          {/* Color Scheme Section */}
+          <div style={{ marginBottom: '40px' }}>
+            <h2 style={{ marginTop: 0, marginBottom: '10px' }}>Farbschema</h2>
+            <p style={{ marginBottom: '20px', color: '#666' }}>Wählen Sie ein Farbschema für das System</p>
+            
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
+              gap: '12px',
             }}>
-              Eigenes Bild hochladen
-            </label>
-            <input
-              id="wallpaper-upload"
-              type="file"
-              accept="image/*"
-              onChange={handleFileUpload}
-              style={{ display: 'none' }}
-            />
-            <p style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
-              JPG, PNG oder GIF - Maximale Größe: 10MB
-            </p>
+              {colorSchemes.map((scheme) => (
+                <div 
+                  key={scheme.id}
+                  onClick={() => setColorScheme(scheme.id)}
+                  style={{
+                    cursor: 'pointer',
+                    border: colorScheme === scheme.id ? '3px solid #0078d4' : '2px solid #ddd',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    transition: 'all 0.2s',
+                    boxShadow: colorScheme === scheme.id ? '0 4px 8px rgba(0,120,212,0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (colorScheme !== scheme.id) {
+                      e.currentTarget.style.transform = 'scale(1.05)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  <div style={{
+                    background: scheme.gradient,
+                    height: '80px',
+                    width: '100%',
+                  }}></div>
+                  <div style={{
+                    padding: '10px',
+                    background: 'white',
+                    textAlign: 'center',
+                    fontSize: '13px',
+                    fontWeight: colorScheme === scheme.id ? 'bold' : 'normal',
+                    color: colorScheme === scheme.id ? '#0078d4' : '#333',
+                  }}>
+                    {scheme.name}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          <h3 style={{ marginBottom: '15px', fontSize: '16px' }}>Vordefinierte Hintergründe</h3>
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', 
-            gap: '15px',
-            marginTop: '20px'
-          }}>
+          {/* Wallpaper Section */}
+          <div>
+            <h2 style={{ marginTop: 0, marginBottom: '10px' }}>Desktop-Hintergrund</h2>
+            <p style={{ marginBottom: '20px', color: '#666' }}>Wählen Sie ein Hintergrundbild für Ihren Desktop</p>
+          
+            {/* Upload Section */}
+            <div style={{
+              marginBottom: '25px',
+              padding: '20px',
+              border: '2px dashed #0078d4',
+              borderRadius: '8px',
+              textAlign: 'center',
+              background: '#f5f5f5'
+            }}>
+              <div style={{ marginBottom: '10px', fontSize: '32px' }}>🖼️</div>
+              <label htmlFor="wallpaper-upload" style={{
+                display: 'inline-block',
+                padding: '10px 20px',
+                background: '#0078d4',
+                color: 'white',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 'bold'
+              }}>
+                Eigenes Bild hochladen
+              </label>
+              <input
+                id="wallpaper-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+              />
+              <p style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+                JPG, PNG oder GIF - Maximale Größe: 10MB
+              </p>
+            </div>
+
+            <h3 style={{ marginBottom: '15px', fontSize: '16px' }}>Vordefinierte Hintergründe</h3>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', 
+              gap: '15px',
+              marginTop: '20px'
+            }}>
             {wallpapers.map((wp) => (
               <div 
                 key={wp.name}
@@ -283,6 +373,7 @@ const Desktop: React.FC = () => {
                 </div>
               </div>
             ))}
+            </div>
           </div>
         </div>
       ),
@@ -349,7 +440,19 @@ const Desktop: React.FC = () => {
           <div className="context-menu-divider"></div>
           
           <div className="context-menu-section">
-            <div className="context-menu-item" onClick={handlePersonalize}>
+            <div 
+              className="context-menu-item" 
+              onClick={handlePersonalize}
+              style={{
+                background: undefined,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = `linear-gradient(90deg, ${getColorScheme(colorScheme).primary}15, ${getColorScheme(colorScheme).secondary}10)`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '';
+              }}
+            >
               <span className="context-menu-icon">🎨</span>
               <span>Personalisieren</span>
             </div>

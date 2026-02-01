@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { WindowState } from '../types/desktop';
 import { useDesktop } from '../contexts/DesktopContext';
+import { getColorScheme } from '../utils/colorSchemes';
 import './Window.css';
 
 interface WindowProps {
@@ -8,7 +9,8 @@ interface WindowProps {
 }
 
 const Window: React.FC<WindowProps> = ({ window }) => {
-  const { removeWindow, focusWindow, minimizeWindow, maximizeWindow, updateWindowPosition, updateWindowSize } = useDesktop();
+  const { removeWindow, focusWindow, minimizeWindow, maximizeWindow, updateWindowPosition, updateWindowSize, colorScheme } = useDesktop();
+  const currentColorScheme = getColorScheme(colorScheme);
   const windowRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
@@ -118,7 +120,13 @@ const Window: React.FC<WindowProps> = ({ window }) => {
       style={style}
       onMouseDown={() => focusWindow(window.id)}
     >
-      <div className="window-titlebar" onMouseDown={handleMouseDown}>
+      <div 
+        className="window-titlebar" 
+        onMouseDown={handleMouseDown}
+        style={{
+          background: window.isFocused ? currentColorScheme.gradient : undefined,
+        }}
+      >
         <div className="window-title">
           {window.icon && <span className="window-icon">{window.icon}</span>}
           {window.title}

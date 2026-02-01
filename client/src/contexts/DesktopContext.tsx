@@ -4,6 +4,7 @@ import { WindowState } from '../types/desktop';
 interface DesktopContextType {
   windows: WindowState[];
   wallpaper: string;
+  colorScheme: string;
   addWindow: (window: Omit<WindowState, 'id' | 'zIndex' | 'isFocused'>) => void;
   removeWindow: (id: string) => void;
   focusWindow: (id: string) => void;
@@ -12,6 +13,7 @@ interface DesktopContextType {
   updateWindowPosition: (id: string, position: { x: number; y: number }) => void;
   updateWindowSize: (id: string, size: { width: number; height: number }) => void;
   setWallpaper: (wallpaper: string) => void;
+  setColorScheme: (colorScheme: string) => void;
 }
 
 const DesktopContext = createContext<DesktopContextType | undefined>(undefined);
@@ -32,6 +34,9 @@ export const DesktopProvider: React.FC<DesktopProviderProps> = ({ children }) =>
   const [windows, setWindows] = useState<WindowState[]>([]);
   const [nextZIndex, setNextZIndex] = useState(1);
   const [wallpaper, setWallpaperState] = useState<string>('linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)');
+  const [colorScheme, setColorSchemeState] = useState<string>(() => {
+    return localStorage.getItem('colorScheme') || 'purple';
+  });
 
   const addWindow = (window: Omit<WindowState, 'id' | 'zIndex' | 'isFocused'>) => {
     const newWindow: WindowState = {
@@ -101,11 +106,17 @@ export const DesktopProvider: React.FC<DesktopProviderProps> = ({ children }) =>
     setWallpaperState(newWallpaper);
   };
 
+  const setColorScheme = (newColorScheme: string) => {
+    setColorSchemeState(newColorScheme);
+    localStorage.setItem('colorScheme', newColorScheme);
+  };
+
   return (
     <DesktopContext.Provider
       value={{
         windows,
         wallpaper,
+        colorScheme,
         addWindow,
         removeWindow,
         focusWindow,
@@ -114,6 +125,7 @@ export const DesktopProvider: React.FC<DesktopProviderProps> = ({ children }) =>
         updateWindowPosition,
         updateWindowSize,
         setWallpaper,
+        setColorScheme,
       }}
     >
       {children}

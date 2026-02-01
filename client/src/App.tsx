@@ -1,34 +1,53 @@
 import { useEffect } from 'react'
+import { AuthProvider } from './contexts/AuthContext'
 import { DesktopProvider } from './contexts/DesktopContext'
 import { FileSystemProvider } from './contexts/FileSystemContext'
+import LoginScreen from './components/LoginScreen'
 import Desktop from './components/Desktop'
+import { useAuth } from './contexts/AuthContext'
 import './App.css'
 
-function App() {
+function AppContent() {
+  const { isAuthenticated } = useAuth();
+
   useEffect(() => {
-    // Verhindert das Zurücknavigieren im Browser
-    const preventBackNavigation = () => {
-      window.history.pushState(null, '', window.location.href);
-    };
+    if (isAuthenticated) {
+      // Verhindert das Zurücknavigieren im Browser
+      const preventBackNavigation = () => {
+        window.history.pushState(null, '', window.location.href);
+      };
 
-    // Initial einen History-Eintrag hinzufügen
-    preventBackNavigation();
+      // Initial einen History-Eintrag hinzufügen
+      preventBackNavigation();
 
-    // Bei jedem popstate Event (Zurück-Button) einen neuen Eintrag pushen
-    window.addEventListener('popstate', preventBackNavigation);
+      // Bei jedem popstate Event (Zurück-Button) einen neuen Eintrag pushen
+      window.addEventListener('popstate', preventBackNavigation);
 
-    return () => {
-      window.removeEventListener('popstate', preventBackNavigation);
-    };
-  }, []);
+      return () => {
+        window.removeEventListener('popstate', preventBackNavigation);
+      };
+    }
+  }, [isAuthenticated]);
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
 
   return (
     <FileSystemProvider>
-      <DesktopProvider>
-        <Desktop />
-      </DesktopProvider>
+      <Desktop />
     </FileSystemProvider>
-  )
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <DesktopProvider>
+        <AppContent />
+      </DesktopProvider>
+    </AuthProvider>
+  );
 }
 
 export default App
