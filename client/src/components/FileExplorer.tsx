@@ -1,38 +1,39 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useFileSystem } from '../contexts/FileSystemContext';
 import { useDesktop } from '../contexts/DesktopContext';
 import { FileSystemItem } from '../types/filesystem';
-import TextEditor from './TextEditor';
 import './FileExplorer.css';
 
 const FileExplorer: React.FC = () => {
   const {
     currentPath,
-    navigateTo,
     getCurrentItems,
-    getItemById,
-    getPathString,
     createItem,
     deleteItem,
     renameItem,
     copyItem,
     cutItem,
     paste,
+    navigateTo,
+    getItemById,
+    getPathString,
     clipboard,
+    uploadFile,
   } = useFileSystem();
-  
+
   const { addWindow } = useDesktop();
 
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<FileSystemItem | null>(null);
   const [renamingItem, setRenamingItem] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; itemId?: string } | null>(null);
   const [viewMode, setViewMode] = useState<'icons' | 'list'>('icons');
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; itemId: string | null } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentItems = getCurrentItems();
-  const currentFolder = getItemById(currentPath);
 
   useEffect(() => {
     if (renamingItem && renameInputRef.current) {
@@ -41,54 +42,61 @@ const FileExplorer: React.FC = () => {
     }
   }, [renamingItem]);
 
+  const getFileIcon = (item: FileSystemItem) => {
+    if (item.type === 'folder') return '📁';
+    const ext = item.extension?.toLowerCase();
+    switch (ext) {
+      case 'txt': return '📄';
+      case 'js':
+      case 'ts':
+      case 'jsx':
+      case 'tsx': return '📜';
+      case 'json': return '📋';
+      case 'css': return '🎨';
+      case 'html': return '🌐';
+      case 'md': return '📝';
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+      case 'gif': return '🖼️';
+      default: return '📄';
+    }
+  };
+
   const handleItemClick = (item: FileSystemItem) => {
-    setSelectedItem(item.id);
-    setContextMenu(null);
+    setSelectedItem(item);
   };
 
   const handleItemDoubleClick = (item: FileSystemItem) => {
     if (item.type === 'folder') {
       navigateTo(item.id);
       setSelectedItem(null);
-    } else if (item.type === 'file') {
+    } else {
       addWindow({
         title: item.name,
-        icon: getFileIcon(item),
-        position: { x: 150, y: 100 },
-        size: { width: 700, height: 500 },
+        icon: '📝',
+        position: { x: 100, y: 100 },
+        size: { width: 800, height: 600 },
         isMinimized: false,
         isMaximized: false,
-        content: <TextEditor fileId={item.id} />,
       });
     }
   };
 
   const handleNavigateUp = () => {
-    if (currentFolder?.parentId) {
-      navigateTo(currentFolder.parentId);
-      setSelectedItem(null);
+    if (currentPath) {
+      const folder = getItemById(currentPath);
+      if (folder && folder.parentId) {
+        navigateTo(folder.parentId);
+      }
     }
   };
 
-  const handleContextMenu = (e: React.MouseEvent, itemId?: string) => {
+  const handleContextMenu = (e: React.MouseEvent, itemId: string | null = null) => {
     e.preventDefault();
-    e.stopPropagation();
     
-    const menuWidth = 220;
-    const menuHeight = 400;
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    let x = e.clientX;
-    let y = e.clientY;
-    
-    if (x + menuWidth > viewportWidth) {
-      x = viewportWidth - menuWidth - 5;
-    }
-    
-    if (y + menuHeight > viewportHeight) {
-      y = viewportHeight - menuHeight - 5;
-    }
+    const x = Math.min(e.clientX, window.innerWidth - 250);
+    const y = Math.min(e.clientY, window.innerHeight - 400);
     
     setContextMenu({ x, y, itemId });
   };
@@ -127,9 +135,10 @@ const FileExplorer: React.FC = () => {
   };
 
   const handleDelete = (itemId: string) => {
-    if (confirm('Möchten Sie dieses Element wirklich löschen?')) {
+    const item = getItemById(itemId);
+    if (item && confirm(`"${item.name}" wirklich löschen?`)) {
       deleteItem(itemId);
-      if (selectedItem === itemId) {
+      if (selectedItem?.id === itemId) {
         setSelectedItem(null);
       }
     }
@@ -151,180 +160,181 @@ const FileExplorer: React.FC = () => {
     setContextMenu(null);
   };
 
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+    setContextMenu(null);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    for (let i = 0; i < files.length; i++) {
+      await uploadFile(files[i], currentPath);
+    }
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    for (let i = 0; i < files.length; i++) {
+      await uploadFile(files[i], currentPath);
+    }
+  };
+
   const handleRefresh = () => {
     setSelectedItem(null);
     setContextMenu(null);
   };
 
-  const getFileIcon = (item: FileSystemItem): string => {
-    if (item.icon) return item.icon;
-    if (item.type === 'folder') return '📁';
-    
-    const ext = item.extension?.toLowerCase();
-    switch (ext) {
-      case 'txt': return '📄';
-      case 'md': return '📝';
-      case 'pdf': return '📕';
-      case 'doc':
-      case 'docx': return '📘';
-      case 'xls':
-      case 'xlsx': return '📊';
-      case 'jpg':
-      case 'jpeg':
-      case 'png':
-      case 'gif': return '🖼️';
-      case 'mp3':
-      case 'wav': return '🎵';
-      case 'mp4':
-      case 'avi': return '🎬';
-      case 'zip':
-      case 'rar': return '📦';
-      case 'js':
-      case 'ts':
-      case 'jsx':
-      case 'tsx': return '📜';
-      case 'html':
-      case 'css': return '🌐';
-      default: return '📄';
-    }
-  };
-
-  const formatFileSize = (bytes?: number): string => {
-    if (!bytes) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    let size = bytes;
-    let unitIndex = 0;
-    
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
-    }
-    
-    return `${size.toFixed(1)} ${units[unitIndex]}`;
-  };
-
-  const formatDate = (date: Date): string => {
-    return new Date(date).toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  useEffect(() => {
-    const handleClickOutside = () => {
-      setContextMenu(null);
-    };
-
-    if (contextMenu) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [contextMenu]);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'c' && selectedItem) {
+      if (!selectedItem) return;
+
+      if (e.key === 'Delete') {
+        handleDelete(selectedItem.id);
+      } else if (e.key === 'F2') {
+        handleRename(selectedItem.id);
+      } else if (e.ctrlKey && e.key === 'c') {
+        handleCopy(selectedItem.id);
+      } else if (e.ctrlKey && e.key === 'x') {
+        handleCut(selectedItem.id);
+      } else if (e.ctrlKey && e.key === 'v') {
+        handlePaste();
+      } else if (e.key === 'Enter') {
+        handleItemDoubleClick(selectedItem);
+      } else if (e.ctrlKey && e.shiftKey && e.key === 'N') {
+        handleCreateFolder();
+      } else if (e.ctrlKey && e.key === 'n') {
         e.preventDefault();
-        copyItem(selectedItem);
-      }
-      else if ((e.ctrlKey || e.metaKey) && e.key === 'x' && selectedItem) {
+        handleCreateFile();
+      } else if (e.ctrlKey && e.key === 'u') {
         e.preventDefault();
-        cutItem(selectedItem);
-      }
-      else if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboard) {
-        e.preventDefault();
-        paste(currentPath);
-      }
-      else if (e.key === 'F2' && selectedItem) {
-        e.preventDefault();
-        handleRename(selectedItem);
-      }
-      else if (e.key === 'Delete' && selectedItem) {
-        e.preventDefault();
-        handleDelete(selectedItem);
-      }
-      else if (e.key === 'F5') {
+        handleUploadClick();
+      } else if (e.key === 'F5') {
         e.preventDefault();
         handleRefresh();
       }
-      else if (e.key === 'Enter' && selectedItem) {
-        e.preventDefault();
-        const item = getItemById(selectedItem);
-        if (item) handleItemDoubleClick(item);
-      }
-      else if ((e.ctrlKey || e.metaKey) && e.key === 'n' && !e.shiftKey) {
-        e.preventDefault();
-        handleCreateFile();
-      }
-      else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'N') {
-        e.preventDefault();
-        handleCreateFolder();
-      }
-      else if (e.key === 'Backspace' && currentFolder?.parentId) {
-        e.preventDefault();
-        handleNavigateUp();
-      }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItem, clipboard, currentPath, currentFolder]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItem, currentPath]);
+
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    if (contextMenu) {
+      window.addEventListener('click', handleClick);
+      return () => window.removeEventListener('click', handleClick);
+    }
+  }, [contextMenu]);
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const formatDate = (date: Date): string => {
+    return new Date(date).toLocaleString('de-DE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
 
   return (
-    <div className="file-explorer" onClick={() => setSelectedItem(null)}>
+    <div className="file-explorer">
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleFileSelect}
+      />
+
       <div className="file-explorer-toolbar">
-        <button
-          className="toolbar-btn"
-          onClick={handleNavigateUp}
-          disabled={!currentFolder?.parentId}
-          title="Zurück"
-        >
+        <button onClick={handleNavigateUp} disabled={!currentPath} title="Nach oben (Backspace)">
           ⬆️
         </button>
-        <div className="path-display">
-          {getPathString(currentPath)}
-        </div>
-        <div className="toolbar-actions">
-          <button className="toolbar-btn" onClick={handleCreateFolder} title="Neuer Ordner">
-            📁+
-          </button>
-          <button className="toolbar-btn" onClick={handleCreateFile} title="Neue Datei">
-            📄+
-          </button>
-          <button
-            className={`toolbar-btn ${viewMode === 'icons' ? 'active' : ''}`}
-            onClick={() => setViewMode('icons')}
-            title="Symbolansicht"
-          >
-            ⊞
-          </button>
-          <button
-            className={`toolbar-btn ${viewMode === 'list' ? 'active' : ''}`}
-            onClick={() => setViewMode('list')}
-            title="Listenansicht"
-          >
-            ☰
-          </button>
-        </div>
+        <div className="file-explorer-path">{getPathString(currentPath)}</div>
+        <button onClick={handleUploadClick} title="Dateien hochladen (Strg+U)">
+          📤
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCreateFolder();
+          }}
+          title="Neuer Ordner (Strg+Umschalt+N)"
+        >
+          📁➕
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCreateFile();
+          }}
+          title="Neue Datei (Strg+N)"
+        >
+          📄➕
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleRefresh();
+          }}
+          title="Aktualisieren (F5)"
+        >
+          🔄
+        </button>
+        <button
+          onClick={() => setViewMode(viewMode === 'icons' ? 'list' : 'icons')}
+          title="Ansicht wechseln"
+        >
+          {viewMode === 'icons' ? '📋' : '🔲'}
+        </button>
       </div>
 
       <div
-        className={`file-explorer-content ${viewMode}`}
-        onContextMenu={(e) => handleContextMenu(e)}
+        className={`file-explorer-content ${viewMode} ${isDragging ? 'dragging' : ''}`}
+        onContextMenu={(e) => handleContextMenu(e, null)}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
       >
         {viewMode === 'icons' ? (
-          <div className="icons-view">
+          <div className="file-explorer-grid">
             {currentItems.map((item) => (
               <div
                 key={item.id}
-                className={`file-item ${selectedItem === item.id ? 'selected' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleItemClick(item);
-                }}
+                className={`file-item ${selectedItem?.id === item.id ? 'selected' : ''}`}
+                onClick={() => handleItemClick(item)}
                 onDoubleClick={() => handleItemDoubleClick(item)}
                 onContextMenu={(e) => {
                   e.stopPropagation();
@@ -336,10 +346,10 @@ const FileExplorer: React.FC = () => {
                   <input
                     ref={renameInputRef}
                     type="text"
-                    className="file-name-input"
+                    className="rename-input"
                     value={renameValue}
                     onChange={(e) => setRenameValue(e.target.value)}
-                    onBlur={handleRenameSubmit}
+                    onBlur={() => handleRenameSubmit()}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleRenameSubmit();
                       if (e.key === 'Escape') setRenamingItem(null);
@@ -353,7 +363,7 @@ const FileExplorer: React.FC = () => {
             ))}
           </div>
         ) : (
-          <table className="list-view">
+          <table className="file-explorer-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -366,11 +376,8 @@ const FileExplorer: React.FC = () => {
               {currentItems.map((item) => (
                 <tr
                   key={item.id}
-                  className={`file-row ${selectedItem === item.id ? 'selected' : ''}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleItemClick(item);
-                  }}
+                  className={`file-row ${selectedItem?.id === item.id ? 'selected' : ''}`}
+                  onClick={() => handleItemClick(item)}
                   onDoubleClick={() => handleItemDoubleClick(item)}
                   onContextMenu={(e) => {
                     e.stopPropagation();
@@ -383,10 +390,10 @@ const FileExplorer: React.FC = () => {
                       <input
                         ref={renameInputRef}
                         type="text"
-                        className="file-name-input"
+                        className="rename-input"
                         value={renameValue}
                         onChange={(e) => setRenameValue(e.target.value)}
-                        onBlur={handleRenameSubmit}
+                        onBlur={() => handleRenameSubmit()}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleRenameSubmit();
                           if (e.key === 'Escape') setRenamingItem(null);
@@ -394,11 +401,11 @@ const FileExplorer: React.FC = () => {
                         onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
-                      <span>{item.name}</span>
+                      item.name
                     )}
                   </td>
-                  <td>{item.type === 'folder' ? 'Ordner' : 'Datei'}</td>
-                  <td>{item.type === 'file' ? formatFileSize(item.size) : '-'}</td>
+                  <td>{item.type === 'folder' ? 'Ordner' : item.extension || 'Datei'}</td>
+                  <td>{item.type === 'file' ? formatFileSize(item.size || 0) : '-'}</td>
                   <td>{formatDate(item.modifiedAt)}</td>
                 </tr>
               ))}
@@ -407,119 +414,127 @@ const FileExplorer: React.FC = () => {
         )}
       </div>
 
-      {contextMenu && ReactDOM.createPortal(
-        <div
-          className="context-menu"
-          style={{ 
-            position: 'fixed',
-            top: `${contextMenu.y}px`, 
-            left: `${contextMenu.x}px`,
-            zIndex: 99999
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {contextMenu.itemId ? (
-            <>
-              <div className="context-menu-item" onClick={() => {
-                const item = getItemById(contextMenu.itemId!);
-                if (item) handleItemDoubleClick(item);
-              }}>
-                <span className="context-menu-icon">📂</span>
-                <span className="context-menu-label">Öffnen</span>
-                <span className="context-menu-shortcut">Enter</span>
-              </div>
-              <div className="context-menu-divider" />
-              <div className="context-menu-item" onClick={() => handleCopy(contextMenu.itemId!)}>
-                <span className="context-menu-icon">📑</span>
-                <span className="context-menu-label">Kopieren</span>
-                <span className="context-menu-shortcut">Strg+C</span>
-              </div>
-              <div className="context-menu-item" onClick={() => handleCut(contextMenu.itemId!)}>
-                <span className="context-menu-icon">✂️</span>
-                <span className="context-menu-label">Ausschneiden</span>
-                <span className="context-menu-shortcut">Strg+X</span>
-              </div>
-              {clipboard && (
-                <div className="context-menu-item" onClick={handlePaste}>
+      {contextMenu &&
+        ReactDOM.createPortal(
+          <div
+            className="context-menu"
+            style={{
+              position: 'fixed',
+              left: `${contextMenu.x}px`,
+              top: `${contextMenu.y}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {contextMenu.itemId ? (
+              <>
+                <div
+                  className="context-menu-item"
+                  onClick={() => {
+                    const item = getItemById(contextMenu.itemId!);
+                    if (item) handleItemDoubleClick(item);
+                  }}
+                >
+                  <span className="context-menu-icon">📂</span>
+                  <span>Öffnen</span>
+                  <span className="context-menu-shortcut">Enter</span>
+                </div>
+                <div className="context-menu-separator"></div>
+                <div className="context-menu-item" onClick={() => handleCopy(contextMenu.itemId!)}>
                   <span className="context-menu-icon">📋</span>
-                  <span className="context-menu-label">Einfügen</span>
+                  <span>Kopieren</span>
+                  <span className="context-menu-shortcut">Strg+C</span>
+                </div>
+                <div className="context-menu-item" onClick={() => handleCut(contextMenu.itemId!)}>
+                  <span className="context-menu-icon">✂️</span>
+                  <span>Ausschneiden</span>
+                  <span className="context-menu-shortcut">Strg+X</span>
+                </div>
+                <div
+                  className={`context-menu-item ${!clipboard ? 'disabled' : ''}`}
+                  onClick={() => handlePaste()}
+                >
+                  <span className="context-menu-icon">📄</span>
+                  <span>Einfügen</span>
                   <span className="context-menu-shortcut">Strg+V</span>
                 </div>
-              )}
-              <div className="context-menu-divider" />
-              <div className="context-menu-item" onClick={() => handleRename(contextMenu.itemId!)}>
-                <span className="context-menu-icon">✏️</span>
-                <span className="context-menu-label">Umbenennen</span>
-                <span className="context-menu-shortcut">F2</span>
-              </div>
-              <div className="context-menu-divider" />
-              <div className="context-menu-item" onClick={() => {
-                const item = getItemById(contextMenu.itemId!);
-                if (item) {
-                  alert(`Name: ${item.name}\nTyp: ${item.type === 'folder' ? 'Ordner' : 'Datei'}\nGröße: ${item.type === 'file' ? formatFileSize(item.size) : '-'}\nErstellt: ${formatDate(item.createdAt)}\nGeändert: ${formatDate(item.modifiedAt)}`);
-                }
-                setContextMenu(null);
-              }}>
-                <span className="context-menu-icon">ℹ️</span>
-                <span className="context-menu-label">Eigenschaften</span>
-                <span className="context-menu-shortcut">Alt+Enter</span>
-              </div>
-              <div className="context-menu-divider" />
-              <div
-                className="context-menu-item danger"
-                onClick={() => handleDelete(contextMenu.itemId!)}
-              >
-                <span className="context-menu-icon">🗑️</span>
-                <span className="context-menu-label">Löschen</span>
-                <span className="context-menu-shortcut">Entf</span>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="context-menu-item" onClick={handleCreateFolder}>
-                <span className="context-menu-icon">📁</span>
-                <span className="context-menu-label">Neuer Ordner</span>
-                <span className="context-menu-shortcut">Strg+Shift+N</span>
-              </div>
-              <div className="context-menu-item" onClick={handleCreateFile}>
-                <span className="context-menu-icon">📄</span>
-                <span className="context-menu-label">Neue Datei</span>
-                <span className="context-menu-shortcut">Strg+N</span>
-              </div>
-              {clipboard && (
-                <>
-                  <div className="context-menu-divider" />
-                  <div className="context-menu-item" onClick={handlePaste}>
-                    <span className="context-menu-icon">📋</span>
-                    <span className="context-menu-label">
-                      Einfügen ({clipboard.operation === 'copy' ? 'Kopie' : 'Verschieben'})
-                    </span>
-                    <span className="context-menu-shortcut">Strg+V</span>
+                <div className="context-menu-separator"></div>
+                <div className="context-menu-item" onClick={() => handleRename(contextMenu.itemId!)}>
+                  <span className="context-menu-icon">✏️</span>
+                  <span>Umbenennen</span>
+                  <span className="context-menu-shortcut">F2</span>
+                </div>
+                <div className="context-menu-separator"></div>
+                <div className="context-menu-item context-menu-item-danger">
+                  <div onClick={() => {
+                    const item = getItemById(contextMenu.itemId!);
+                    if (item) {
+                      alert(`Name: ${item.name}\nTyp: ${item.type}\nGröße: ${item.type === 'file' ? formatFileSize(item.size || 0) : '-'}\nErstellt: ${formatDate(item.createdAt)}\nGeändert: ${formatDate(item.modifiedAt)}`);
+                      setContextMenu(null);
+                    }
+                  }}>
+                    <span className="context-menu-icon">ℹ️</span>
+                    <span>Eigenschaften</span>
                   </div>
-                </>
-              )}
-              <div className="context-menu-divider" />
-              <div className="context-menu-item" onClick={() => setViewMode('icons')}>
-                <span className="context-menu-icon">⊞</span>
-                <span className="context-menu-label">Symbolansicht</span>
-                {viewMode === 'icons' && <span className="context-menu-check">✓</span>}
-              </div>
-              <div className="context-menu-item" onClick={() => setViewMode('list')}>
-                <span className="context-menu-icon">☰</span>
-                <span className="context-menu-label">Listenansicht</span>
-                {viewMode === 'list' && <span className="context-menu-check">✓</span>}
-              </div>
-              <div className="context-menu-divider" />
-              <div className="context-menu-item" onClick={handleRefresh}>
-                <span className="context-menu-icon">↻</span>
-                <span className="context-menu-label">Aktualisieren</span>
-                <span className="context-menu-shortcut">F5</span>
-              </div>
-            </>
-          )}
-        </div>,
-        document.body
-      )}
+                </div>
+                <div className="context-menu-separator"></div>
+                <div
+                  className="context-menu-item context-menu-item-danger"
+                  onClick={() => handleDelete(contextMenu.itemId!)}
+                >
+                  <span className="context-menu-icon">🗑️</span>
+                  <span>Löschen</span>
+                  <span className="context-menu-shortcut">Entf</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="context-menu-item" onClick={() => handleCreateFolder()}>
+                  <span className="context-menu-icon">📁</span>
+                  <span>Neuer Ordner</span>
+                  <span className="context-menu-shortcut">Strg+Umschalt+N</span>
+                </div>
+                <div className="context-menu-item" onClick={() => handleCreateFile()}>
+                  <span className="context-menu-icon">📄</span>
+                  <span>Neue Datei</span>
+                  <span className="context-menu-shortcut">Strg+N</span>
+                </div>
+                <div
+                  className={`context-menu-item ${!clipboard ? 'disabled' : ''}`}
+                  onClick={() => handlePaste()}
+                >
+                  <span className="context-menu-icon">📄</span>
+                  <span>Einfügen</span>
+                  <span className="context-menu-shortcut">Strg+V</span>
+                  {clipboard && <span className="context-menu-hint">{clipboard.operation === 'copy' ? '(Kopie)' : '(Verschieben)'}</span>}
+                </div>
+                <div className="context-menu-separator"></div>
+                <div className="context-menu-item" onClick={() => handleUploadClick()}>
+                  <span className="context-menu-icon">📤</span>
+                  <span>Dateien hochladen</span>
+                  <span className="context-menu-shortcut">Strg+U</span>
+                </div>
+                <div className="context-menu-separator"></div>
+                <div className="context-menu-item" onClick={() => setViewMode('icons')}>
+                  <span className="context-menu-icon">🔲</span>
+                  <span>Symbolansicht</span>
+                  {viewMode === 'icons' && <span className="context-menu-check">✓</span>}
+                </div>
+                <div className="context-menu-item" onClick={() => setViewMode('list')}>
+                  <span className="context-menu-icon">📋</span>
+                  <span>Listenansicht</span>
+                  {viewMode === 'list' && <span className="context-menu-check">✓</span>}
+                </div>
+                <div className="context-menu-separator"></div>
+                <div className="context-menu-item" onClick={() => handleRefresh()}>
+                  <span className="context-menu-icon">🔄</span>
+                  <span>Aktualisieren</span>
+                  <span className="context-menu-shortcut">F5</span>
+                </div>
+              </>
+            )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

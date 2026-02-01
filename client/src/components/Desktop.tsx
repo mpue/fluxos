@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDesktop } from '../contexts/DesktopContext';
 import Window from './Window';
 import Taskbar from './Taskbar';
@@ -11,7 +11,13 @@ import { DesktopIcon as DesktopIconType } from '../types/desktop';
 import './Desktop.css';
 
 const Desktop: React.FC = () => {
-  const { windows, addWindow } = useDesktop();
+  const { windows, addWindow, wallpaper, setWallpaper } = useDesktop();
+  
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; visible: boolean }>({
+    x: 0,
+    y: 0,
+    visible: false,
+  });
 
   const [desktopIcons] = useState<DesktopIconType[]>([
     {
@@ -136,9 +142,156 @@ const Desktop: React.FC = () => {
     },
   ]);
 
+  // Handle right-click on desktop background
+  const handleContextMenu = (e: React.MouseEvent) => {
+    // Only show context menu if clicking on desktop background
+    if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('desktop-background')) {
+      e.preventDefault();
+      setContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        visible: true,
+      });
+    }
+  };
+
+  // Close context menu on any click
+  useEffect(() => {
+    const handleClick = () => setContextMenu(prev => ({ ...prev, visible: false }));
+    if (contextMenu.visible) {
+      document.addEventListener('click', handleClick);
+      return () => document.removeEventListener('click', handleClick);
+    }
+  }, [contextMenu.visible]);
+
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+
+  const handlePersonalize = () => {
+    const wallpapers = [
+      { name: 'Gradient Lila', value: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)' },
+      { name: 'Gradient Blau', value: 'linear-gradient(135deg, #2e3192 0%, #1bffff 100%)' },
+      { name: 'Gradient Orange', value: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
+      { name: 'Gradient Grün', value: 'linear-gradient(135deg, #00d2ff 0%, #3a47d5 50%, #00d2ff 100%)' },
+      { name: 'Nacht', value: 'linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%)' },
+      { name: 'Sonnenuntergang', value: 'linear-gradient(135deg, #ff512f 0%, #dd2476 100%)' },
+      { name: 'Ozean', value: 'linear-gradient(135deg, #2e3192 0%, #1bffff 100%)' },
+      { name: 'Wald', value: 'linear-gradient(135deg, #134e5e 0%, #71b280 100%)' },
+    ];
+
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const imageUrl = e.target?.result as string;
+          setWallpaper(`url(${imageUrl}) center/cover no-repeat`);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    addWindow({
+      title: 'Personalisierung',
+      icon: '🎨',
+      position: { x: 200, y: 100 },
+      size: { width: 700, height: 650 },
+      isMinimized: false,
+      isMaximized: false,
+      content: (
+        <div style={{ padding: '20px' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '20px' }}>Desktop-Hintergrund</h2>
+          <p style={{ marginBottom: '20px', color: '#666' }}>Wählen Sie ein Hintergrundbild für Ihren Desktop</p>
+          
+          {/* Upload Section */}
+          <div style={{
+            marginBottom: '25px',
+            padding: '20px',
+            border: '2px dashed #0078d4',
+            borderRadius: '8px',
+            textAlign: 'center',
+            background: '#f5f5f5'
+          }}>
+            <div style={{ marginBottom: '10px', fontSize: '32px' }}>🖼️</div>
+            <label htmlFor="wallpaper-upload" style={{
+              display: 'inline-block',
+              padding: '10px 20px',
+              background: '#0078d4',
+              color: 'white',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 'bold'
+            }}>
+              Eigenes Bild hochladen
+            </label>
+            <input
+              id="wallpaper-upload"
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+            />
+            <p style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+              JPG, PNG oder GIF - Maximale Größe: 10MB
+            </p>
+          </div>
+
+          <h3 style={{ marginBottom: '15px', fontSize: '16px' }}>Vordefinierte Hintergründe</h3>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', 
+            gap: '15px',
+            marginTop: '20px'
+          }}>
+            {wallpapers.map((wp) => (
+              <div 
+                key={wp.name}
+                onClick={() => setWallpaper(wp.value)}
+                style={{
+                  cursor: 'pointer',
+                  border: wallpaper === wp.value ? '3px solid #0078d4' : '2px solid #ddd',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  transition: 'all 0.2s',
+                  boxShadow: wallpaper === wp.value ? '0 4px 8px rgba(0,120,212,0.3)' : '0 2px 4px rgba(0,0,0,0.1)',
+                }}
+                onMouseEnter={(e) => {
+                  if (wallpaper !== wp.value) {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                <div style={{
+                  background: wp.value,
+                  height: '100px',
+                  width: '100%',
+                }}></div>
+                <div style={{
+                  padding: '10px',
+                  background: 'white',
+                  textAlign: 'center',
+                  fontSize: '13px',
+                  fontWeight: wallpaper === wp.value ? 'bold' : 'normal',
+                  color: wallpaper === wp.value ? '#0078d4' : '#333',
+                }}>
+                  {wp.name}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+    });
+  };
+
   return (
-    <div className="desktop">
-      <div className="desktop-background"></div>
+    <div className="desktop" onContextMenu={handleContextMenu}>
+      <div className="desktop-background" style={{ background: wallpaper }}></div>
       
       <div className="desktop-icons">
         {desktopIcons.map(icon => (
@@ -151,6 +304,58 @@ const Desktop: React.FC = () => {
           <Window key={window.id} window={window} />
         ))}
       </div>
+
+      {/* Desktop Context Menu */}
+      {contextMenu.visible && (
+        <div 
+          className="desktop-context-menu"
+          style={{ 
+            left: contextMenu.x, 
+            top: contextMenu.y 
+          }}
+        >
+          <div className="context-menu-section">
+            <div className="context-menu-item" onClick={handleRefresh}>
+              <span className="context-menu-icon">🔄</span>
+              <span>Aktualisieren</span>
+            </div>
+          </div>
+          
+          <div className="context-menu-divider"></div>
+          
+          <div className="context-menu-section">
+            <div className="context-menu-item context-menu-item-submenu">
+              <span className="context-menu-icon">➕</span>
+              <span>Neu</span>
+              <span className="context-menu-arrow">▶</span>
+            </div>
+          </div>
+          
+          <div className="context-menu-divider"></div>
+          
+          <div className="context-menu-section">
+            <div className="context-menu-item context-menu-item-submenu">
+              <span className="context-menu-icon">👁️</span>
+              <span>Ansicht</span>
+              <span className="context-menu-arrow">▶</span>
+            </div>
+            <div className="context-menu-item context-menu-item-submenu">
+              <span className="context-menu-icon">📊</span>
+              <span>Sortieren nach</span>
+              <span className="context-menu-arrow">▶</span>
+            </div>
+          </div>
+          
+          <div className="context-menu-divider"></div>
+          
+          <div className="context-menu-section">
+            <div className="context-menu-item" onClick={handlePersonalize}>
+              <span className="context-menu-icon">🎨</span>
+              <span>Personalisieren</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Taskbar />
     </div>

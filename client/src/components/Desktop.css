@@ -36,3 +36,58 @@
   z-index: 100;
   pointer-events: none;
 }
+/* Desktop Context Menu */
+.desktop-context-menu {
+  position: fixed;
+  background: #ffffff;
+  border: 1px solid #a0a0a0;
+  border-radius: 4px;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.3);
+  min-width: 220px;
+  z-index: 10000;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 14px;
+  padding: 4px 0;
+}
+
+.context-menu-section {
+  padding: 2px 0;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 30px 6px 12px;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+}
+
+.context-menu-item:hover {
+  background: #e5f3ff;
+}
+
+.context-menu-icon {
+  margin-right: 10px;
+  width: 20px;
+  display: inline-block;
+  text-align: center;
+  font-size: 16px;
+}
+
+.context-menu-arrow {
+  position: absolute;
+  right: 8px;
+  font-size: 10px;
+  color: #666;
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: #d0d0d0;
+  margin: 4px 8px;
+}
+
+.context-menu-item-submenu {
+  position: relative;
+}

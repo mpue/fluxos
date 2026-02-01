@@ -3,6 +3,7 @@ import { WindowState } from '../types/desktop';
 
 interface DesktopContextType {
   windows: WindowState[];
+  wallpaper: string;
   addWindow: (window: Omit<WindowState, 'id' | 'zIndex' | 'isFocused'>) => void;
   removeWindow: (id: string) => void;
   focusWindow: (id: string) => void;
@@ -10,6 +11,7 @@ interface DesktopContextType {
   maximizeWindow: (id: string) => void;
   updateWindowPosition: (id: string, position: { x: number; y: number }) => void;
   updateWindowSize: (id: string, size: { width: number; height: number }) => void;
+  setWallpaper: (wallpaper: string) => void;
 }
 
 const DesktopContext = createContext<DesktopContextType | undefined>(undefined);
@@ -29,6 +31,7 @@ interface DesktopProviderProps {
 export const DesktopProvider: React.FC<DesktopProviderProps> = ({ children }) => {
   const [windows, setWindows] = useState<WindowState[]>([]);
   const [nextZIndex, setNextZIndex] = useState(1);
+  const [wallpaper, setWallpaperState] = useState<string>('linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)');
 
   const addWindow = (window: Omit<WindowState, 'id' | 'zIndex' | 'isFocused'>) => {
     const newWindow: WindowState = {
@@ -94,10 +97,15 @@ export const DesktopProvider: React.FC<DesktopProviderProps> = ({ children }) =>
     );
   };
 
+  const setWallpaper = (newWallpaper: string) => {
+    setWallpaperState(newWallpaper);
+  };
+
   return (
     <DesktopContext.Provider
       value={{
         windows,
+        wallpaper,
         addWindow,
         removeWindow,
         focusWindow,
@@ -105,6 +113,7 @@ export const DesktopProvider: React.FC<DesktopProviderProps> = ({ children }) =>
         maximizeWindow,
         updateWindowPosition,
         updateWindowSize,
+        setWallpaper,
       }}
     >
       {children}

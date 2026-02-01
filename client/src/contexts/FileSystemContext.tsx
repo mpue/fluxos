@@ -25,6 +25,9 @@ interface FileSystemContextType {
   cutItem: (itemId: string) => void;
   paste: (targetParentId: string | null) => void;
   
+  // Upload
+  uploadFile: (file: File, parentId: string | null) => Promise<FileSystemItem>;
+  
   // Suche
   searchItems: (query: string) => FileSystemItem[];
 }
@@ -282,6 +285,56 @@ export const FileSystemProvider: React.FC<FileSystemProviderProps> = ({ children
     }
   }, [clipboard, items, moveItem]);
 
+  // Upload
+  const uploadFile = useCallback(async (file: File, parentId: string | null): Promise<FileSystemItem> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        const now = new Date();
+        const extension = file.name.split('.').pop() || 'txt';
+        
+        const newItem: FileSystemItem = {
+          id: `file-${Date.now()}-${Math.random()}`,
+          name: file.name,
+          type: 'file',
+          parentId,
+          createdAt: now,
+          modifiedAt: now,
+          size: file.size,
+          content: content,
+          extension: extension
+        };
+        
+        setItems(prev => [...prev, newItem]);
+        resolve(newItem);
+      };
+      
+      reader.onerror = () => {
+        reject(new Error('Fehler beim Lesen der Datei'));
+      };
+      
+      // Lese als Text für Textdateien, als DataURL für andere
+      if (file.type.startsWith('text/') || 
+          file.name.endsWith('.txt') || 
+          file.name.endsWith('.md') || 
+          file.name.endsWith('.json') ||
+          file.name.endsWith('.xml') ||
+          file.name.endsWith('.csv') ||
+          file.name.endsWith('.js') ||
+          file.name.endsWith('.ts') ||
+          file.name.endsWith('.jsx') ||
+          file.name.endsWith('.tsx') ||
+          file.name.endsWith('.html') ||
+          file.name.endsWith('.css')) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsDataURL(file);
+      }
+    });
+  }, []);
+
   // Suche
   const searchItems = useCallback((query: string): FileSystemItem[] => {
     const lowerQuery = query.toLowerCase();
@@ -310,6 +363,7 @@ export const FileSystemProvider: React.FC<FileSystemProviderProps> = ({ children
         copyItem,
         cutItem,
         paste,
+        uploadFile,
         searchItems,
       }}
     >

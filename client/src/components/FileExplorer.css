@@ -68,6 +68,30 @@
   flex: 1;
   overflow: auto;
   padding: 8px;
+  position: relative;
+  transition: background 0.2s;
+}
+
+.file-explorer-content.dragging {
+  background: rgba(0, 120, 212, 0.1);
+  border: 2px dashed #0078d4;
+}
+
+.file-explorer-content.dragging::after {
+  content: '📤 Dateien hier ablegen';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 24px;
+  color: #0078d4;
+  font-weight: 600;
+  pointer-events: none;
+  text-align: center;
+  background: white;
+  padding: 20px 40px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Icons View */
