@@ -31,6 +31,7 @@ export const APP_REGISTRY: AppInfo[] = [
   { id: 'spreadsheet', name: 'Tabellenkalkulation', icon: '📊', category: 'Büro', description: 'Tabellen und Kalkulationen erstellen', size: '5.4 MB', version: '1.0.0', isSystem: false },
   { id: 'vector-editor', name: 'Vektor-Zeichenprogramm', icon: '✏️', category: 'Multimedia', description: 'Vektorgrafiken erstellen und bearbeiten', size: '6.1 MB', version: '1.0.0', isSystem: false },
   { id: 'video-player', name: 'Video Player', icon: '🎬', category: 'Multimedia', description: 'Videos abspielen', size: '4.2 MB', version: '1.0.0', isSystem: false },
+  { id: 'terminal', name: 'Terminal', icon: '>_', category: 'System', description: 'Linux-kompatible Terminalemulation', size: '2.5 MB', version: '2.0.0', isSystem: true },
 ];
 
 const STORAGE_KEY = 'fluxos-installed-apps';

@@ -1,0 +1,142 @@
+/* ───── Terminal ───── */
+
+.terminal {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #0c0c0c;
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', 'Monaco', 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #cccccc;
+  cursor: text;
+  user-select: text;
+}
+
+.term-output {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 10px;
+  min-height: 0;
+}
+
+.term-output::-webkit-scrollbar {
+  width: 8px;
+}
+
+.term-output::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.term-output::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+  border-radius: 4px;
+}
+
+.term-output::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* ─── Lines ─── */
+
+.term-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+  min-height: 1em;
+}
+
+.term-stdout {
+  color: #cccccc;
+}
+
+.term-stderr {
+  color: #f14c4c;
+}
+
+.term-info {
+  color: #6a9955;
+}
+
+.term-success {
+  color: #6a9955;
+}
+
+.term-prompt {
+  color: #cccccc;
+}
+
+/* ─── Input line ─── */
+
+.term-input-line {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+}
+
+.term-prompt {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.term-prompt-sep {
+  color: #cccccc;
+}
+
+.term-prompt-dollar {
+  color: #cccccc;
+}
+
+.term-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e0e0e0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  padding: 0;
+  margin: 0;
+  caret-color: #aeafad;
+}
+
+.term-input::selection {
+  background: rgba(38, 79, 120, 0.8);
+}
+
+/* ─── ANSI colors ─── */
+
+.ansi-bold-blue {
+  color: #569cd6;
+  font-weight: bold;
+}
+
+.ansi-bold-red {
+  color: #f14c4c;
+  font-weight: bold;
+}
+
+.ansi-bold-green {
+  color: #6a9955;
+  font-weight: bold;
+}
+
+.ansi-bold-yellow {
+  color: #dcdcaa;
+  font-weight: bold;
+}
+
+.ansi-bold-cyan {
+  color: #4ec9b0;
+  font-weight: bold;
+}
+
+/* ANSI background colors (neofetch color bar) */
+.ansi-bg-40 { background: #0c0c0c; display: inline-block; }
+.ansi-bg-41 { background: #c50f1f; display: inline-block; }
+.ansi-bg-42 { background: #13a10e; display: inline-block; }
+.ansi-bg-43 { background: #c19c00; display: inline-block; }
+.ansi-bg-44 { background: #0037da; display: inline-block; }
+.ansi-bg-45 { background: #881798; display: inline-block; }
+.ansi-bg-46 { background: #3a96dd; display: inline-block; }
+.ansi-bg-47 { background: #cccccc; display: inline-block; }

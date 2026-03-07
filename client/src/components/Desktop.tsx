@@ -13,6 +13,7 @@ import Tetris from './Tetris';
 import SpaceInvaders from './SpaceInvaders';
 import Sokoban from './Sokoban';
 import FluxiRun from './FluxiRun';
+import Terminal from './Terminal';
 import ImageViewer from './ImageViewer';
 import Spreadsheet from './Spreadsheet';
 import VectorEditor from './VectorEditor';
@@ -282,6 +283,23 @@ const Desktop: React.FC = () => {
           isMinimized: false,
           isMaximized: false,
           content: <FluxiRun />,
+        });
+      },
+    },
+    {
+      id: 'terminal',
+      name: 'Terminal',
+      icon: '>_',
+      position: savedPositions['terminal'] || { x: 200, y: 120 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Terminal',
+          icon: '>_',
+          position: { x: 100, y: 60 },
+          size: { width: 750, height: 480 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <Terminal />,
         });
       },
     },
