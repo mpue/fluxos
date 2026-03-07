@@ -45,16 +45,22 @@ interface Player extends Entity { vy: number; onGround: boolean; facing: number;
 interface Bullet extends Entity { vx: number; }
 interface Folder extends Entity { vx: number; vy: number; hp: number; type: 'folder' | 'virus' | 'boss'; onGround: boolean; shootTimer: number; }
 interface Platform extends Entity {}
+interface MovingPlatform extends Platform { vx: number; vy: number; origX: number; origY: number; rangeX: number; rangeY: number; }
+interface FinishZone extends Entity {}
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; color: string; size: number; }
 interface HddPiece extends Entity { collected: boolean; }
 
 // ─── Level Generator ───
-function generateLevel(level: number): { platforms: Platform[]; enemies: Folder[]; pieces: HddPiece[] } {
+function generateLevel(level: number): { platforms: Platform[]; movingPlatforms: MovingPlatform[]; enemies: Folder[]; pieces: HddPiece[]; finishZone: FinishZone } {
   const platforms: Platform[] = [];
+  const movingPlatforms: MovingPlatform[] = [];
   const enemies: Folder[] = [];
   const pieces: HddPiece[] = [];
 
   const worldW = W * LEVEL_WIDTH_MULT;
+
+  // Finish zone at end of level
+  const finishZone: FinishZone = { x: worldW - 100, y: GROUND_Y - 80, w: 40, h: 80 };
 
   // Ground segments with gaps
   let gx = 0;
@@ -67,6 +73,8 @@ function generateLevel(level: number): { platforms: Platform[]; enemies: Folder[
       gx += 60 + Math.random() * 60;
     }
   }
+  // Ensure ground under finish zone
+  platforms.push({ x: worldW - 160, y: GROUND_Y, w: 200, h: 50 });
 
   const numPlats = 12 + level * 4;
   for (let i = 0; i < numPlats; i++) {
@@ -77,6 +85,27 @@ function generateLevel(level: number): { platforms: Platform[]; enemies: Folder[
 
     if (Math.random() < 0.55) {
       pieces.push({ x: px + pw / 2 - 10, y: py - 30, w: 20, h: 20, collected: false });
+    }
+  }
+
+  // Moving platforms — more on level 1 to make it interesting
+  const numMoving = level === 1 ? 8 : 3 + level;
+  for (let i = 0; i < numMoving; i++) {
+    const mx = 250 + i * ((worldW - 400) / numMoving) + Math.random() * 80;
+    const my = GROUND_Y - 80 - Math.random() * 160;
+    const mw = 80 + Math.random() * 60;
+    const horizontal = Math.random() < 0.6;
+    movingPlatforms.push({
+      x: mx, y: my, w: mw, h: 14,
+      origX: mx, origY: my,
+      vx: horizontal ? (1.2 + Math.random() * 1.5) * (Math.random() < 0.5 ? 1 : -1) : 0,
+      vy: horizontal ? 0 : (0.8 + Math.random() * 1.0) * (Math.random() < 0.5 ? 1 : -1),
+      rangeX: horizontal ? 80 + Math.random() * 120 : 0,
+      rangeY: horizontal ? 0 : 40 + Math.random() * 80,
+    });
+    // Place a collectible above some moving platforms
+    if (Math.random() < 0.6) {
+      pieces.push({ x: mx + mw / 2 - 10, y: my - 30, w: 20, h: 20, collected: false });
     }
   }
 
@@ -108,7 +137,7 @@ function generateLevel(level: number): { platforms: Platform[]; enemies: Folder[
     });
   }
 
-  return { platforms, enemies, pieces };
+  return { platforms, movingPlatforms, enemies, pieces, finishZone };
 }
 
 // ─── Component ───
@@ -122,9 +151,10 @@ const FluxiRun: React.FC = () => {
   const bgMusic = useRef<HTMLAudioElement | null>(null);
   const gameRef = useRef<{
     player: Player; bullets: Bullet[]; enemies: Folder[];
-    platforms: Platform[]; particles: Particle[]; pieces: HddPiece[];
+    platforms: Platform[]; movingPlatforms: MovingPlatform[]; particles: Particle[]; pieces: HddPiece[];
     camera: number; score: number; level: number; running: boolean;
     enemyBullets: Bullet[]; bossDefeated: boolean;
+    finishZone: FinishZone;
     frameId: number;
   } | null>(null);
 
@@ -160,7 +190,7 @@ const FluxiRun: React.FC = () => {
   }, [gameState, muted]);
 
   const initGame = useCallback((lvl: number, prevScore: number) => {
-    const { platforms, enemies, pieces } = generateLevel(lvl);
+    const { platforms, movingPlatforms, enemies, pieces, finishZone } = generateLevel(lvl);
     gameRef.current = {
       player: {
         x: 40, y: GROUND_Y - 40, w: 24, h: 36,
@@ -169,9 +199,10 @@ const FluxiRun: React.FC = () => {
         coyoteTime: 0, jumpBuffered: false,
         canDoubleJump: true, jumpWasReleased: true,
       },
-      bullets: [], enemies, platforms, particles: [],
+      bullets: [], enemies, platforms, movingPlatforms, particles: [],
       pieces, camera: 0, score: prevScore, level: lvl,
       running: true, enemyBullets: [], bossDefeated: false,
+      finishZone,
       frameId: 0,
     };
     setScore(prevScore);
@@ -256,13 +287,28 @@ const FluxiRun: React.FC = () => {
       p.y += p.vy;
       p.onGround = false;
 
-      // Platform collision
+      // Platform collision (static)
       for (const plat of g.platforms) {
         if (p.vy >= 0 && p.x + p.w > plat.x && p.x < plat.x + plat.w &&
             p.y + p.h >= plat.y && p.y + p.h - p.vy <= plat.y + 6) {
           p.y = plat.y - p.h;
           p.vy = 0;
           p.onGround = true;
+        }
+      }
+
+      // Moving platforms: update position and player collision
+      for (const mp of g.movingPlatforms) {
+        const prevX = mp.x;
+        mp.x = mp.origX + Math.sin(Date.now() / 1000 * Math.abs(mp.vx) + mp.origX) * mp.rangeX;
+        mp.y = mp.origY + Math.sin(Date.now() / 1000 * Math.abs(mp.vy || 1) + mp.origY) * mp.rangeY;
+        const dx = mp.x - prevX;
+        if (p.vy >= 0 && p.x + p.w > mp.x && p.x < mp.x + mp.w &&
+            p.y + p.h >= mp.y && p.y + p.h <= mp.y + 14) {
+          p.y = mp.y - p.h;
+          p.vy = 0;
+          p.onGround = true;
+          p.x += dx; // ride the platform
         }
       }
 
@@ -402,8 +448,8 @@ const FluxiRun: React.FC = () => {
         return;
       }
 
-      // Level complete: all enemies dead
-      if (g.enemies.length === 0) {
+      // Level complete: player reaches the finish zone
+      if (collides(p, g.finishZone)) {
         g.running = false;
         if (g.level >= 9) {
           if (!mutedRef.current) sfx.win();
@@ -468,6 +514,79 @@ const FluxiRun: React.FC = () => {
           ctx.fillRect(plat.x, plat.y, plat.w, 3);
           ctx.fillStyle = 'rgba(96, 165, 250, 0.1)';
           ctx.fillRect(plat.x + 4, plat.y + 4, plat.w - 8, plat.h - 5);
+        }
+      }
+
+      // Moving platforms
+      for (const mp of g.movingPlatforms) {
+        if (mp.x + mp.w < cam - 20 || mp.x > cam + W + 20) continue;
+        // Platform body with distinct look
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(mp.x, mp.y, mp.w, mp.h);
+        // Glowing top edge (orange/amber for moving)
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(mp.x, mp.y, mp.w, 3);
+        // Animated chevron arrows to indicate movement
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.25)';
+        ctx.fillRect(mp.x + 4, mp.y + 4, mp.w - 8, mp.h - 5);
+        // Direction indicators
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 8px monospace';
+        if (mp.rangeX > 0) {
+          ctx.fillText('◀▶', mp.x + mp.w / 2 - 7, mp.y + 11);
+        } else {
+          ctx.fillText('▲▼', mp.x + mp.w / 2 - 7, mp.y + 11);
+        }
+        // Glow underneath
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.08)';
+        ctx.fillRect(mp.x, mp.y + mp.h, mp.w, 6);
+      }
+
+      // Finish zone
+      const fz = g.finishZone;
+      if (fz.x + fz.w > cam - 20 && fz.x < cam + W + 20) {
+        // Portal glow
+        const pulse = Math.sin(Date.now() / 300) * 0.15 + 0.35;
+        ctx.fillStyle = `rgba(34, 197, 94, ${pulse})`;
+        ctx.beginPath();
+        ctx.arc(fz.x + fz.w / 2, fz.y + fz.h / 2, 50, 0, Math.PI * 2);
+        ctx.fill();
+        // Portal body
+        ctx.fillStyle = '#16a34a';
+        ctx.fillRect(fz.x + 5, fz.y, fz.w - 10, fz.h);
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(fz.x + 8, fz.y + 4, fz.w - 16, fz.h - 8);
+        // Animated stripes
+        const stripeOff = (Date.now() / 100) % 20;
+        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        for (let sy = -20; sy < fz.h; sy += 20) {
+          ctx.fillRect(fz.x + 8, fz.y + sy + stripeOff, fz.w - 16, 6);
+        }
+        // Flag pole
+        ctx.fillStyle = '#a3a3a3';
+        ctx.fillRect(fz.x + fz.w / 2 - 2, fz.y - 30, 4, 30);
+        // Flag
+        ctx.fillStyle = '#22c55e';
+        ctx.fillRect(fz.x + fz.w / 2 + 2, fz.y - 30, 20, 14);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 9px monospace';
+        ctx.fillText('ZIEL', fz.x + fz.w / 2 + 3, fz.y - 20);
+        // Checkered base
+        ctx.fillStyle = '#000';
+        for (let cx = 0; cx < fz.w; cx += 8) {
+          for (let cy = 0; cy < 8; cy += 8) {
+            if ((cx / 8 + cy / 8) % 2 === 0) {
+              ctx.fillRect(fz.x + cx, fz.y + fz.h - 8 + cy, 8, 8);
+            }
+          }
+        }
+        ctx.fillStyle = '#fff';
+        for (let cx = 0; cx < fz.w; cx += 8) {
+          for (let cy = 0; cy < 8; cy += 8) {
+            if ((cx / 8 + cy / 8) % 2 === 1) {
+              ctx.fillRect(fz.x + cx, fz.y + fz.h - 8 + cy, 8, 8);
+            }
+          }
         }
       }
 
@@ -638,6 +757,18 @@ const FluxiRun: React.FC = () => {
       ctx.fillStyle = '#f59e0b';
       ctx.font = '11px monospace';
       ctx.fillText(`📂 ${g.enemies.length}`, W - 110, 40);
+
+      // Finish zone direction indicator
+      const fzScreen = g.finishZone.x - g.camera;
+      if (fzScreen > W) {
+        ctx.fillStyle = '#22c55e';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(`ZIEL →`, W - 80, H - 20);
+      } else if (fzScreen + g.finishZone.w < 0) {
+        ctx.fillStyle = '#22c55e';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(`← ZIEL`, 10, H - 20);
+      }
     };
 
     const loop = () => {
