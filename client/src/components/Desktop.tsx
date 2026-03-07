@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDesktop } from '../contexts/DesktopContext';
 import Window from './Window';
 import Taskbar from './Taskbar';
@@ -12,6 +12,9 @@ import Notepad from './Notepad';
 import Tetris from './Tetris';
 import SpaceInvaders from './SpaceInvaders';
 import Sokoban from './Sokoban';
+import ImageViewer from './ImageViewer';
+import Spreadsheet from './Spreadsheet';
+import VectorEditor from './VectorEditor';
 import { DesktopIcon as DesktopIconType } from '../types/desktop';
 import { colorSchemes, getColorScheme } from '../utils/colorSchemes';
 import './Desktop.css';
@@ -25,12 +28,19 @@ const Desktop: React.FC = () => {
     visible: false,
   });
 
-  const [desktopIcons, setDesktopIcons] = useState<DesktopIconType[]>([
+  const [desktopIcons, setDesktopIcons] = useState<DesktopIconType[]>(() => {
+    const savedPositions: Record<string, { x: number; y: number }> = {};
+    try {
+      const stored = localStorage.getItem('fluxos-icon-positions');
+      if (stored) Object.assign(savedPositions, JSON.parse(stored));
+    } catch { /* ignore */ }
+
+    const defaultIcons: DesktopIconType[] = [
     {
       id: 'file-explorer',
       name: 'Datei-Explorer',
       icon: '📂',
-      position: { x: 20, y: 20 },
+      position: savedPositions['file-explorer'] || { x: 20, y: 20 },
       onDoubleClick: () => {
         addWindow({
           title: 'Datei-Explorer',
@@ -47,7 +57,7 @@ const Desktop: React.FC = () => {
       id: 'my-computer',
       name: 'Dieser PC',
       icon: '🖥️',
-      position: { x: 20, y: 120 },
+      position: savedPositions['my-computer'] || { x: 20, y: 120 },
       onDoubleClick: () => {
         addWindow({
           title: 'Dieser PC',
@@ -64,7 +74,7 @@ const Desktop: React.FC = () => {
       id: 'browser',
       name: 'Browser',
       icon: '🌐',
-      position: { x: 20, y: 220 },
+      position: savedPositions['browser'] || { x: 20, y: 220 },
       onDoubleClick: () => {
         addWindow({
           title: 'FluxOS Browser',
@@ -81,7 +91,7 @@ const Desktop: React.FC = () => {
       id: 'settings',
       name: 'Einstellungen',
       icon: '⚙️',
-      position: { x: 20, y: 320 },
+      position: savedPositions['settings'] || { x: 20, y: 320 },
       onDoubleClick: () => {
         addWindow({
           title: 'Einstellungen',
@@ -103,7 +113,7 @@ const Desktop: React.FC = () => {
       id: 'user-management',
       name: 'Benutzer',
       icon: '👥',
-      position: { x: 20, y: 420 },
+      position: savedPositions['user-management'] || { x: 20, y: 420 },
       onDoubleClick: () => {
         addWindow({
           title: 'Benutzerverwaltung',
@@ -120,7 +130,7 @@ const Desktop: React.FC = () => {
       id: 'group-management',
       name: 'Gruppen',
       icon: '👨‍👩‍👧‍👦',
-      position: { x: 20, y: 520 },
+      position: savedPositions['group-management'] || { x: 20, y: 520 },
       onDoubleClick: () => {
         addWindow({
           title: 'Gruppenverwaltung',
@@ -137,7 +147,7 @@ const Desktop: React.FC = () => {
       id: 'calculator',
       name: 'Rechner',
       icon: '🔢',
-      position: { x: 20, y: 620 },
+      position: savedPositions['calculator'] || { x: 20, y: 620 },
       onDoubleClick: () => {
         addWindow({
           title: 'Rechner',
@@ -154,7 +164,7 @@ const Desktop: React.FC = () => {
       id: 'notepad',
       name: 'Notizen',
       icon: '📝',
-      position: { x: 20, y: 720 },
+      position: savedPositions['notepad'] || { x: 20, y: 720 },
       onDoubleClick: () => {
         addWindow({
           title: 'Notizen',
@@ -171,7 +181,7 @@ const Desktop: React.FC = () => {
       id: 'tetris',
       name: 'Tetris',
       icon: '🎮',
-      position: { x: 20, y: 820 },
+      position: savedPositions['tetris'] || { x: 20, y: 820 },
       onDoubleClick: () => {
         addWindow({
           title: 'Tetris',
@@ -188,7 +198,7 @@ const Desktop: React.FC = () => {
       id: 'space-invaders',
       name: 'Space Invaders',
       icon: '👾',
-      position: { x: 110, y: 20 },
+      position: savedPositions['space-invaders'] || { x: 110, y: 20 },
       onDoubleClick: () => {
         addWindow({
           title: 'Space Invaders',
@@ -205,7 +215,7 @@ const Desktop: React.FC = () => {
       id: 'sokoban',
       name: 'Sokoban',
       icon: '📦',
-      position: { x: 110, y: 120 },
+      position: savedPositions['sokoban'] || { x: 110, y: 120 },
       onDoubleClick: () => {
         addWindow({
           title: 'Sokoban',
@@ -218,13 +228,226 @@ const Desktop: React.FC = () => {
         });
       },
     },
-  ]);
+    {
+      id: 'image-viewer',
+      name: 'Bildbetrachter',
+      icon: '🖼️',
+      position: savedPositions['image-viewer'] || { x: 110, y: 220 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Bildbetrachter',
+          icon: '🖼️',
+          position: { x: 150, y: 60 },
+          size: { width: 700, height: 500 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <ImageViewer />,
+        });
+      },
+    },
+    {
+      id: 'spreadsheet',
+      name: 'Tabellen',
+      icon: '📊',
+      position: savedPositions['spreadsheet'] || { x: 110, y: 320 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Tabellenkalkulation',
+          icon: '📊',
+          position: { x: 80, y: 40 },
+          size: { width: 950, height: 600 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <Spreadsheet />,
+        });
+      },
+    },
+    {
+      id: 'vector-editor',
+      name: 'Zeichnen',
+      icon: '✏️',
+      position: savedPositions['vector-editor'] || { x: 110, y: 420 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Vektor-Zeichenprogramm',
+          icon: '✏️',
+          position: { x: 60, y: 30 },
+          size: { width: 1000, height: 650 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <VectorEditor />,
+        });
+      },
+    },
+  ];
+    return defaultIcons;
+  });
 
-  const handleIconMove = useCallback((id: string, x: number, y: number) => {
-    setDesktopIcons(prev => prev.map(icon =>
-      icon.id === id ? { ...icon, position: { x, y } } : icon
-    ));
+  // Persist icon positions to localStorage
+  useEffect(() => {
+    const positions: Record<string, { x: number; y: number }> = {};
+    desktopIcons.forEach(icon => { positions[icon.id] = icon.position; });
+    localStorage.setItem('fluxos-icon-positions', JSON.stringify(positions));
+  }, [desktopIcons]);
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [marquee, setMarquee] = useState<{ startX: number; startY: number; endX: number; endY: number } | null>(null);
+
+  // Refs for drag logic — direct DOM manipulation during drag, commit on mouseup
+  const dragRef = useRef<{ iconId: string; lastX: number; lastY: number; hasMoved: boolean; offsets: Map<string, { dx: number; dy: number }> } | null>(null);
+  const selectedIdsRef = useRef<Set<string>>(new Set());
+  const iconsRef = useRef(desktopIcons);
+  iconsRef.current = desktopIcons;
+
+  useEffect(() => {
+    selectedIdsRef.current = selectedIds;
+  }, [selectedIds]);
+
+  const handleIconMouseDown = useCallback((id: string, e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    e.preventDefault();
+
+    const isSelected = selectedIdsRef.current.has(id);
+    const additive = e.ctrlKey || e.metaKey;
+
+    if (!isSelected) {
+      const newSet = additive ? new Set([...selectedIdsRef.current, id]) : new Set([id]);
+      selectedIdsRef.current = newSet;
+      setSelectedIds(newSet);
+    } else if (additive) {
+      const newSet = new Set(selectedIdsRef.current);
+      newSet.delete(id);
+      selectedIdsRef.current = newSet;
+      setSelectedIds(newSet);
+      return;
+    }
+
+    // Collect DOM elements and init offsets for all dragged icons
+    const offsets = new Map<string, { dx: number; dy: number }>();
+    const sel = selectedIdsRef.current;
+    const draggedIds = new Set(sel);
+    draggedIds.add(id);
+    draggedIds.forEach(iconId => offsets.set(iconId, { dx: 0, dy: 0 }));
+
+    dragRef.current = { iconId: id, lastX: e.clientX, lastY: e.clientY, hasMoved: false, offsets };
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const deltaX = ev.clientX - dragRef.current.lastX;
+      const deltaY = ev.clientY - dragRef.current.lastY;
+      if (deltaX === 0 && deltaY === 0) return;
+      dragRef.current.hasMoved = true;
+      dragRef.current.lastX = ev.clientX;
+      dragRef.current.lastY = ev.clientY;
+
+      // Update accumulated offsets and move DOM elements directly
+      dragRef.current.offsets.forEach((off, iconId) => {
+        off.dx += deltaX;
+        off.dy += deltaY;
+        const el = document.querySelector(`[data-icon-id="${iconId}"]`) as HTMLElement | null;
+        if (el) {
+          el.style.transform = `translate(${off.dx}px, ${off.dy}px)`;
+        }
+      });
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      if (!dragRef.current) return;
+      const finalOffsets = dragRef.current.offsets;
+      const moved = dragRef.current.hasMoved;
+      dragRef.current = null;
+
+      if (!moved) return;
+
+      // Reset transforms and commit final positions to React state
+      finalOffsets.forEach((_off, iconId) => {
+        const el = document.querySelector(`[data-icon-id="${iconId}"]`) as HTMLElement | null;
+        if (el) el.style.transform = '';
+      });
+
+      setDesktopIcons(prev => prev.map(icon => {
+        const off = finalOffsets.get(icon.id);
+        if (off) {
+          return { ...icon, position: { x: icon.position.x + off.dx, y: icon.position.y + off.dy } };
+        }
+        return icon;
+      }));
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
   }, []);
+
+  const handleIconDoubleClick = useCallback((id: string) => {
+    if (dragRef.current?.hasMoved) return;
+    const icon = iconsRef.current.find(i => i.id === id);
+    if (icon) icon.onDoubleClick();
+  }, []);
+
+  const handleDesktopMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('.desktop-icon') || target.closest('.windows-container') || target.closest('.taskbar')) return;
+
+    if (!e.ctrlKey && !e.metaKey) {
+      selectedIdsRef.current = new Set();
+      setSelectedIds(new Set());
+    }
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    setMarquee({ startX, startY, endX: startX, endY: startY });
+  }, []);
+
+  // Marquee mouse tracking via refs to avoid re-registering listeners
+  const marqueeRef = useRef(marquee);
+  marqueeRef.current = marquee;
+
+  useEffect(() => {
+    if (!marquee) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setMarquee(prev => prev ? { ...prev, endX: e.clientX, endY: e.clientY } : null);
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+
+      const m = marqueeRef.current;
+      if (m) {
+        const left = Math.min(m.startX, e.clientX);
+        const right = Math.max(m.startX, e.clientX);
+        const top = Math.min(m.startY, e.clientY);
+        const bottom = Math.max(m.startY, e.clientY);
+
+        if (right - left > 5 || bottom - top > 5) {
+          const icons = iconsRef.current;
+          const newSelected = new Set<string>();
+          icons.forEach(icon => {
+            const cx = icon.position.x + 45;
+            const cy = icon.position.y + 45;
+            if (cx >= left && cx <= right && cy >= top && cy <= bottom) {
+              newSelected.add(icon.id);
+            }
+          });
+          selectedIdsRef.current = newSelected;
+          setSelectedIds(newSelected);
+        }
+      }
+      setMarquee(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [!!marquee]);  // only re-run when marquee toggles between null and non-null
 
   // Handle right-click: always prevent browser context menu
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -428,14 +651,32 @@ const Desktop: React.FC = () => {
   };
 
   return (
-    <div className="desktop" onContextMenu={handleContextMenu}>
+    <div className="desktop" onContextMenu={handleContextMenu} onMouseDown={handleDesktopMouseDown}>
       <div className="desktop-background" style={{ background: wallpaper }}></div>
       
       <div className="desktop-icons">
         {desktopIcons.map(icon => (
-          <DesktopIcon key={icon.id} icon={icon} onMove={handleIconMove} />
+          <DesktopIcon
+            key={icon.id}
+            icon={icon}
+            selected={selectedIds.has(icon.id)}
+            onMouseDown={handleIconMouseDown}
+            onDoubleClick={handleIconDoubleClick}
+          />
         ))}
       </div>
+
+      {marquee && (
+        <div
+          className="marquee-selection"
+          style={{
+            left: Math.min(marquee.startX, marquee.endX),
+            top: Math.min(marquee.startY, marquee.endY),
+            width: Math.abs(marquee.endX - marquee.startX),
+            height: Math.abs(marquee.endY - marquee.startY),
+          }}
+        />
+      )}
 
       <div className="windows-container">
         {windows.map(window => (

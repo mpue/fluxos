@@ -5,6 +5,7 @@ import { useDesktop } from '../contexts/DesktopContext';
 import { useDialog } from '../contexts/DialogContext';
 import { FileSystemItem } from '../types/filesystem';
 import TextEditor from './TextEditor';
+import ImageViewer from './ImageViewer';
 import './FileExplorer.css';
 
 const FileExplorer: React.FC = () => {
@@ -75,15 +76,29 @@ const FileExplorer: React.FC = () => {
       navigateTo(item.id);
       setSelectedItem(null);
     } else {
-      addWindow({
-        title: item.name,
-        icon: '📝',
-        position: { x: 150, y: 80 },
-        size: { width: 800, height: 600 },
-        isMinimized: false,
-        isMaximized: false,
-        content: <TextEditor fileId={item.id} />,
-      });
+      const ext = item.extension?.toLowerCase();
+      const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp', 'ico'];
+      if (ext && imageExts.includes(ext) && item.content) {
+        addWindow({
+          title: item.name,
+          icon: '🖼️',
+          position: { x: 150, y: 80 },
+          size: { width: 700, height: 500 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <ImageViewer src={item.content} fileName={item.name} />,
+        });
+      } else {
+        addWindow({
+          title: item.name,
+          icon: '📝',
+          position: { x: 150, y: 80 },
+          size: { width: 800, height: 600 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <TextEditor fileId={item.id} />,
+        });
+      }
     }
   };
 

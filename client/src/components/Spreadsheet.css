@@ -1,0 +1,287 @@
+.spreadsheet {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-family: 'Segoe UI', Calibri, sans-serif;
+  font-size: 13px;
+  outline: none;
+}
+
+/* Toolbar */
+.ss-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 8px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #404040;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.ss-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ss-toolbar-sep {
+  width: 1px;
+  height: 22px;
+  background: #444;
+  margin: 0 4px;
+}
+
+.ss-tb-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #ccc;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.1s;
+  min-width: 28px;
+  text-align: center;
+}
+
+.ss-tb-btn:hover {
+  background: #3a3a3a;
+  border-color: #555;
+}
+
+.ss-tb-btn.active {
+  background: #0e639c;
+  border-color: #1177bb;
+  color: #fff;
+}
+
+.ss-color-label {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: background 0.1s;
+}
+
+.ss-color-label:hover {
+  background: #3a3a3a;
+}
+
+.ss-color-input {
+  width: 20px;
+  height: 20px;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+}
+
+/* Formula bar */
+.ss-formula-bar {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+  background: #252526;
+  border-bottom: 1px solid #404040;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
+.ss-cell-ref {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ccc;
+  min-width: 50px;
+  text-align: center;
+  padding: 2px 8px;
+  background: #2d2d2d;
+  border: 1px solid #404040;
+  border-radius: 2px;
+}
+
+.ss-fx {
+  color: #888;
+  font-size: 12px;
+  font-style: italic;
+  padding: 0 4px;
+}
+
+.ss-formula-input {
+  flex: 1;
+  background: #1e1e1e;
+  border: 1px solid #404040;
+  border-radius: 2px;
+  color: #d4d4d4;
+  font-size: 13px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  padding: 2px 6px;
+  outline: none;
+}
+
+.ss-formula-input:focus {
+  border-color: #007acc;
+}
+
+/* Grid */
+.ss-grid-wrapper {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  outline: none;
+}
+
+.ss-grid {
+  display: flex;
+  flex-direction: column;
+  min-width: 100%;
+}
+
+/* Header row */
+.ss-header-row {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: #2d2d2d;
+}
+
+.ss-corner {
+  width: 50px;
+  min-width: 50px;
+  height: 24px;
+  background: #2d2d2d;
+  border-right: 1px solid #404040;
+  border-bottom: 1px solid #404040;
+  position: sticky;
+  left: 0;
+  z-index: 4;
+}
+
+.ss-col-header {
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #404040;
+  border-bottom: 1px solid #404040;
+  background: #2d2d2d;
+  color: #aaa;
+  font-size: 11px;
+  font-weight: 600;
+  user-select: none;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.ss-col-header.active {
+  background: #264f78;
+  color: #fff;
+}
+
+.ss-col-resize {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 5px;
+  cursor: col-resize;
+  z-index: 5;
+}
+
+.ss-col-resize:hover {
+  background: #007acc;
+}
+
+/* Rows */
+.ss-row {
+  display: flex;
+}
+
+.ss-row-header {
+  width: 50px;
+  min-width: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #404040;
+  border-bottom: 1px solid #333;
+  background: #2d2d2d;
+  color: #aaa;
+  font-size: 11px;
+  font-weight: 600;
+  user-select: none;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+}
+
+.ss-row-header.active {
+  background: #264f78;
+  color: #fff;
+}
+
+/* Cells */
+.ss-cell {
+  border-right: 1px solid #333;
+  border-bottom: 1px solid #333;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  cursor: cell;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.ss-cell:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ss-cell.selected {
+  outline: 2px solid #007acc;
+  outline-offset: -1px;
+  z-index: 1;
+}
+
+.ss-cell.in-range {
+  background: rgba(0, 122, 204, 0.15);
+}
+
+.ss-cell-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+  line-height: 26px;
+}
+
+.ss-cell-edit {
+  position: absolute;
+  inset: 0;
+  border: 2px solid #007acc;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font-size: 13px;
+  font-family: inherit;
+  padding: 0 4px;
+  outline: none;
+  z-index: 5;
+}
+
+/* Status bar */
+.ss-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 10px;
+  background: #007acc;
+  color: white;
+  font-size: 11px;
+  flex-shrink: 0;
+}

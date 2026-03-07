@@ -1,0 +1,267 @@
+.vector-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1e1e1e;
+  color: #ccc;
+  font-family: 'Segoe UI', sans-serif;
+  font-size: 12px;
+  outline: none;
+}
+
+/* Top toolbar */
+.ve-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  background: #2d2d2d;
+  border-bottom: 1px solid #404040;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.ve-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.ve-sep {
+  width: 1px;
+  height: 22px;
+  background: #444;
+  margin: 0 4px;
+}
+
+.ve-tb-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #ccc;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.ve-tb-btn:hover:not(:disabled) {
+  background: #3a3a3a;
+  border-color: #555;
+}
+
+.ve-tb-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.ve-delete-btn:hover {
+  background: #5a2020 !important;
+  border-color: #a33 !important;
+}
+
+.ve-tb-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 4px;
+}
+
+.ve-tb-check input {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Main layout */
+.ve-main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Left sidebar */
+.ve-sidebar {
+  width: 180px;
+  min-width: 180px;
+  background: #252526;
+  border-right: 1px solid #404040;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.ve-tools {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 2px;
+  border-bottom: 1px solid #333;
+}
+
+.ve-tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: #bbb;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.1s;
+  text-align: left;
+}
+
+.ve-tool-btn:hover {
+  background: #2a2d3e;
+  border-color: #444;
+}
+
+.ve-tool-btn.active {
+  background: #0e639c;
+  border-color: #1177bb;
+  color: #fff;
+}
+
+.ve-tool-icon {
+  font-size: 16px;
+  width: 22px;
+  text-align: center;
+}
+
+.ve-tool-label {
+  font-size: 11px;
+}
+
+/* Properties panel */
+.ve-props {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ve-prop-section {
+  font-size: 10px;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 6px;
+  margin-bottom: 2px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid #333;
+}
+
+.ve-prop-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ve-prop-label {
+  font-size: 11px;
+  color: #999;
+  min-width: 48px;
+}
+
+.ve-prop-color-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ve-prop-color-row input[type="color"] {
+  width: 28px;
+  height: 22px;
+  border: 1px solid #555;
+  border-radius: 3px;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+}
+
+.ve-color-none {
+  background: transparent;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #888;
+  font-size: 12px;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.ve-color-none:hover {
+  border-color: #888;
+  color: #ccc;
+}
+
+.ve-prop-row input[type="range"] {
+  flex: 1;
+  height: 4px;
+  accent-color: #007acc;
+}
+
+.ve-prop-val {
+  font-size: 10px;
+  color: #888;
+  min-width: 28px;
+  text-align: right;
+}
+
+.ve-num-input {
+  width: 60px;
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 3px;
+  color: #ccc;
+  font-size: 11px;
+  padding: 2px 4px;
+  outline: none;
+}
+
+.ve-num-input:focus {
+  border-color: #007acc;
+}
+
+/* Canvas area */
+.ve-canvas-wrapper {
+  flex: 1;
+  overflow: auto;
+  background:
+    repeating-conic-gradient(#2a2a2a 0% 25%, #262626 0% 50%) 0 0 / 20px 20px;
+  position: relative;
+}
+
+.ve-svg {
+  width: 100%;
+  height: 100%;
+  min-width: 800px;
+  min-height: 600px;
+  display: block;
+}
+
+/* Selection handles */
+.ve-handle {
+  pointer-events: all;
+}
+
+/* Status bar */
+.ve-statusbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 3px 10px;
+  background: #68217a;
+  color: white;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.ve-status-right {
+  margin-left: auto;
+}
