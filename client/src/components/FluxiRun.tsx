@@ -41,7 +41,7 @@ const GROUND_Y = H - 40;
 const LEVEL_WIDTH_MULT = 10;
 
 interface Entity { x: number; y: number; w: number; h: number; }
-interface Player extends Entity { vy: number; onGround: boolean; facing: number; hp: number; maxHp: number; invincible: number; shootCooldown: number; coyoteTime: number; jumpBuffered: boolean; }
+interface Player extends Entity { vy: number; onGround: boolean; facing: number; hp: number; maxHp: number; invincible: number; shootCooldown: number; coyoteTime: number; jumpBuffered: boolean; canDoubleJump: boolean; jumpWasReleased: boolean; }
 interface Bullet extends Entity { vx: number; }
 interface Folder extends Entity { vx: number; vy: number; hp: number; type: 'folder' | 'virus' | 'boss'; onGround: boolean; shootTimer: number; }
 interface Platform extends Entity {}
@@ -119,6 +119,7 @@ const FluxiRun: React.FC = () => {
   const [level, setLevel] = useState(1);
   const [muted, setMuted] = useState(false);
   const keys = useRef<Set<string>>(new Set());
+  const bgMusic = useRef<HTMLAudioElement | null>(null);
   const gameRef = useRef<{
     player: Player; bullets: Bullet[]; enemies: Folder[];
     platforms: Platform[]; particles: Particle[]; pieces: HddPiece[];
@@ -130,6 +131,34 @@ const FluxiRun: React.FC = () => {
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
 
+  // ─── Background Music ───
+  useEffect(() => {
+    if (!bgMusic.current) {
+      const audio = new Audio('/Schiebab.mp3');
+      audio.loop = true;
+      audio.volume = 0.3;
+      bgMusic.current = audio;
+    }
+    return () => {
+      if (bgMusic.current) {
+        bgMusic.current.pause();
+        bgMusic.current.currentTime = 0;
+      }
+    };
+  }, []);
+
+  // Play/pause music based on game state
+  useEffect(() => {
+    const audio = bgMusic.current;
+    if (!audio) return;
+    if (gameState === 'playing' && !muted) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+      if (gameState === 'menu') audio.currentTime = 0;
+    }
+  }, [gameState, muted]);
+
   const initGame = useCallback((lvl: number, prevScore: number) => {
     const { platforms, enemies, pieces } = generateLevel(lvl);
     gameRef.current = {
@@ -138,6 +167,7 @@ const FluxiRun: React.FC = () => {
         vy: 0, onGround: false, facing: 1,
         hp: 5, maxHp: 5, invincible: 0, shootCooldown: 0,
         coyoteTime: 0, jumpBuffered: false,
+        canDoubleJump: true, jumpWasReleased: true,
       },
       bullets: [], enemies, platforms, particles: [],
       pieces, camera: 0, score: prevScore, level: lvl,
@@ -186,11 +216,11 @@ const FluxiRun: React.FC = () => {
       if (k.has('arrowleft') || k.has('a')) { p.x -= MOVE_SPEED; p.facing = -1; }
       if (k.has('arrowright') || k.has('d')) { p.x += MOVE_SPEED; p.facing = 1; }
 
-      // Jump with coyote time + jump buffering
+      // Jump with coyote time + jump buffering + double jump
       const wantsJump = k.has('arrowup') || k.has('w') || k.has(' ');
       if (wantsJump) p.jumpBuffered = true;
-      if (!wantsJump) p.jumpBuffered = false;
-      if (p.onGround) p.coyoteTime = 8;
+      if (!wantsJump) { p.jumpBuffered = false; p.jumpWasReleased = true; }
+      if (p.onGround) { p.coyoteTime = 8; p.canDoubleJump = true; }
       else if (p.coyoteTime > 0) p.coyoteTime--;
 
       if ((wantsJump || p.jumpBuffered) && p.coyoteTime > 0) {
@@ -198,6 +228,13 @@ const FluxiRun: React.FC = () => {
         p.onGround = false;
         p.coyoteTime = 0;
         p.jumpBuffered = false;
+        p.jumpWasReleased = false;
+        if (!mutedRef.current) sfx.jump();
+      } else if (wantsJump && p.jumpWasReleased && !p.onGround && p.coyoteTime <= 0 && p.canDoubleJump) {
+        // Double jump
+        p.vy = JUMP_FORCE * 0.85;
+        p.canDoubleJump = false;
+        p.jumpWasReleased = false;
         if (!mutedRef.current) sfx.jump();
       }
 
