@@ -1,0 +1,203 @@
+.sokoban {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1a1a2e;
+  outline: none;
+  font-family: 'Segoe UI', sans-serif;
+  color: #ccc;
+}
+
+/* Header */
+.sok-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: #16213e;
+  border-bottom: 1px solid #333;
+}
+
+.sok-level-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sok-nav-btn {
+  background: #2a2a4a;
+  border: 1px solid #444;
+  color: #ccc;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sok-nav-btn:hover:not(:disabled) {
+  background: #3a3a6a;
+  border-color: #666;
+}
+
+.sok-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.sok-level-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #eee;
+  white-space: nowrap;
+}
+
+.sok-stats {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+}
+
+.sok-stat {
+  font-size: 12px;
+  color: #999;
+}
+
+.sok-stat strong {
+  color: #eee;
+  font-variant-numeric: tabular-nums;
+}
+
+.sok-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.sok-btn {
+  background: #2a2a4a;
+  border: 1px solid #444;
+  color: #ccc;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sok-btn:hover {
+  background: #3a3a6a;
+  border-color: #666;
+}
+
+.sok-sound-btn {
+  background: none;
+  border: 1px solid #444;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: all 0.15s;
+}
+
+.sok-sound-btn:hover {
+  border-color: #666;
+}
+
+.sok-sound-btn.muted {
+  opacity: 0.4;
+}
+
+/* Canvas */
+.sok-canvas-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 12px;
+  overflow: auto;
+}
+
+.sok-canvas {
+  border-radius: 4px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Win overlay */
+.sok-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+}
+
+.sok-overlay-content {
+  text-align: center;
+  padding: 32px;
+}
+
+.sok-trophy {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.sok-win-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffcc00;
+  margin-bottom: 8px;
+}
+
+.sok-win-sub {
+  font-size: 14px;
+  color: #aaa;
+  margin-bottom: 20px;
+}
+
+.sok-btn-next {
+  display: inline-block;
+  background: linear-gradient(135deg, #336699, #4488bb);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 24px;
+  border: none;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 12px rgba(51, 102, 153, 0.4);
+}
+
+.sok-btn-next:hover {
+  background: linear-gradient(135deg, #2a5577, #3a77aa);
+  transform: translateY(-1px);
+}
+
+.sok-btn-restart {
+  display: inline-block;
+  font-size: 12px;
+  color: #888;
+  background: transparent;
+  border: 1px solid #555;
+}
+
+.sok-btn-restart:hover {
+  color: #ccc;
+  border-color: #888;
+}
+
+/* Footer */
+.sok-footer {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  padding: 6px 12px;
+  font-size: 11px;
+  color: #555;
+  background: #16213e;
+  border-top: 1px solid #333;
+}

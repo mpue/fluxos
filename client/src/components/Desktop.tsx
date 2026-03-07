@@ -9,6 +9,9 @@ import Browser from './Browser';
 import FileExplorer from './FileExplorer';
 import Calculator from './Calculator';
 import Notepad from './Notepad';
+import Tetris from './Tetris';
+import SpaceInvaders from './SpaceInvaders';
+import Sokoban from './Sokoban';
 import { DesktopIcon as DesktopIconType } from '../types/desktop';
 import { colorSchemes, getColorScheme } from '../utils/colorSchemes';
 import './Desktop.css';
@@ -161,6 +164,57 @@ const Desktop: React.FC = () => {
           isMinimized: false,
           isMaximized: false,
           content: <Notepad />,
+        });
+      },
+    },
+    {
+      id: 'tetris',
+      name: 'Tetris',
+      icon: '🎮',
+      position: { x: 20, y: 820 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Tetris',
+          icon: '🎮',
+          position: { x: 200, y: 50 },
+          size: { width: 460, height: 580 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <Tetris />,
+        });
+      },
+    },
+    {
+      id: 'space-invaders',
+      name: 'Space Invaders',
+      icon: '👾',
+      position: { x: 110, y: 20 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Space Invaders',
+          icon: '👾',
+          position: { x: 200, y: 30 },
+          size: { width: 440, height: 620 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <SpaceInvaders />,
+        });
+      },
+    },
+    {
+      id: 'sokoban',
+      name: 'Sokoban',
+      icon: '📦',
+      position: { x: 110, y: 120 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Sokoban',
+          icon: '📦',
+          position: { x: 150, y: 50 },
+          size: { width: 500, height: 520 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <Sokoban />,
         });
       },
     },
