@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDialog } from '../contexts/DialogContext';
 import './GroupManagement.css';
 
 interface User {
@@ -18,6 +19,7 @@ interface Group {
 }
 
 const GroupManagement: React.FC = () => {
+  const { showAlert, showConfirm } = useDialog();
   const [groups, setGroups] = useState<Group[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +41,7 @@ const GroupManagement: React.FC = () => {
 
   const fetchGroups = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/groups');
+      const response = await fetch('http://localhost:5001/api/groups');
       if (!response.ok) throw new Error('Failed to fetch groups');
       const data = await response.json();
       setGroups(data);
@@ -52,7 +54,7 @@ const GroupManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users');
+      const response = await fetch('http://localhost:5001/api/users');
       if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
       setUsers(data);
@@ -66,8 +68,8 @@ const GroupManagement: React.FC = () => {
     
     try {
       const url = editingGroup 
-        ? `http://localhost:5000/api/groups/${editingGroup.id}`
-        : 'http://localhost:5000/api/groups';
+        ? `http://localhost:5001/api/groups/${editingGroup.id}`
+        : 'http://localhost:5001/api/groups';
       
       const method = editingGroup ? 'PUT' : 'POST';
       
@@ -87,15 +89,15 @@ const GroupManagement: React.FC = () => {
       setEditingGroup(null);
       fetchGroups();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to save group');
+      showAlert('Fehler', err instanceof Error ? err.message : 'Failed to save group', '❌');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Gruppe wirklich löschen?')) return;
+    if (!await showConfirm('Löschen', 'Gruppe wirklich löschen?', '🗑️')) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/groups/${id}`, {
+      const response = await fetch(`http://localhost:5001/api/groups/${id}`, {
         method: 'DELETE',
       });
       
@@ -103,7 +105,7 @@ const GroupManagement: React.FC = () => {
       
       fetchGroups();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete group');
+      showAlert('Fehler', err instanceof Error ? err.message : 'Failed to delete group', '❌');
     }
   };
 
@@ -131,7 +133,7 @@ const GroupManagement: React.FC = () => {
     if (!selectedGroup) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/groups/${selectedGroup.id}/members`, {
+      const response = await fetch(`http://localhost:5001/api/groups/${selectedGroup.id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId }),
@@ -144,7 +146,7 @@ const GroupManagement: React.FC = () => {
 
       fetchGroups();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to add user to group');
+      showAlert('Fehler', err instanceof Error ? err.message : 'Failed to add user to group', '❌');
     }
   };
 
@@ -152,7 +154,7 @@ const GroupManagement: React.FC = () => {
     if (!selectedGroup) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/groups/${selectedGroup.id}/members/${userId}`, {
+      const response = await fetch(`http://localhost:5001/api/groups/${selectedGroup.id}/members/${userId}`, {
         method: 'DELETE',
       });
 
@@ -163,7 +165,7 @@ const GroupManagement: React.FC = () => {
       const updatedGroup = groups.find(g => g.id === selectedGroup.id);
       if (updatedGroup) setSelectedGroup(updatedGroup);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to remove user from group');
+      showAlert('Fehler', err instanceof Error ? err.message : 'Failed to remove user from group', '❌');
     }
   };
 

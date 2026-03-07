@@ -2,11 +2,12 @@ import React, { useState, useRef } from 'react';
 import './Browser.css';
 
 const Browser: React.FC = () => {
-  const [url, setUrl] = useState('https://www.cflux.org');
-  const [inputValue, setInputValue] = useState('https://www.cflux.org');
+  const [url, setUrl] = useState('https://lite.duckduckgo.com');
+  const [inputValue, setInputValue] = useState('https://lite.duckduckgo.com');
   const [isLoading, setIsLoading] = useState(false);
   const [canGoBack, setCanGoBack] = useState(false);
   const [canGoForward, setCanGoForward] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const handleNavigate = (newUrl: string) => {
@@ -16,7 +17,7 @@ const Browser: React.FC = () => {
     if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
       // Check if it looks like a search query
       if (!finalUrl.includes('.') || finalUrl.includes(' ')) {
-        finalUrl = `https://www.google.com/search?q=${encodeURIComponent(finalUrl)}`;
+        finalUrl = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(finalUrl)}`;
       } else {
         finalUrl = `https://${finalUrl}`;
       }
@@ -25,6 +26,7 @@ const Browser: React.FC = () => {
     setUrl(finalUrl);
     setInputValue(finalUrl);
     setIsLoading(true);
+    setLoadError(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -56,18 +58,26 @@ const Browser: React.FC = () => {
   };
 
   const handleHome = () => {
-    handleNavigate('https://www.google.com');
+    handleNavigate('https://lite.duckduckgo.com');
   };
 
   const handleLoad = () => {
     setIsLoading(false);
     setCanGoBack(true);
+    setLoadError(false);
+  };
+
+  const handleIframeError = () => {
+    setIsLoading(false);
+    setLoadError(true);
+  };
+
+  const handleOpenExternal = () => {
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const quickLinks = [
-    { name: 'Google', url: 'https://www.google.com', icon: '🔍' },
-    { name: 'GitHub', url: 'https://github.com', icon: '💻' },
-    { name: 'YouTube', url: 'https://www.youtube.com', icon: '▶️' },
+    { name: 'DuckDuckGo', url: 'https://lite.duckduckgo.com', icon: '🔍' },
     { name: 'Wikipedia', url: 'https://www.wikipedia.org', icon: '📚' },
   ];
 
@@ -140,14 +150,26 @@ const Browser: React.FC = () => {
       </div>
 
       <div className="browser-content">
-        <iframe
-          ref={iframeRef}
-          src={url}
-          className="browser-frame"
-          title="Browser Content"
-          onLoad={handleLoad}
-          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
-        />
+        {loadError ? (
+          <div className="browser-error">
+            <div className="browser-error-icon">🚫</div>
+            <h3>Seite kann nicht im eingebetteten Browser geladen werden</h3>
+            <p>Diese Website blockiert die Darstellung in eingebetteten Ansichten.</p>
+            <button className="browser-error-button" onClick={handleOpenExternal}>
+              🔗 Im externen Browser öffnen
+            </button>
+          </div>
+        ) : (
+          <iframe
+            ref={iframeRef}
+            src={url}
+            className="browser-frame"
+            title="Browser Content"
+            onLoad={handleLoad}
+            onError={handleIframeError}
+            sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+          />
+        )}
       </div>
     </div>
   );

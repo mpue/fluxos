@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDialog } from '../contexts/DialogContext';
 import './UserManagement.css';
 
 interface Group {
@@ -19,6 +20,7 @@ interface UserWithGroups extends User {
 }
 
 const UserManagement: React.FC = () => {
+  const { showAlert, showConfirm } = useDialog();
   const [users, setUsers] = useState<UserWithGroups[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ const UserManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/users');
+      const response = await fetch('http://localhost:5001/api/users');
       if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
       
@@ -49,7 +51,7 @@ const UserManagement: React.FC = () => {
       const usersWithGroups = await Promise.all(
         data.map(async (user: User) => {
           try {
-            const groupsResponse = await fetch('http://localhost:5000/api/groups');
+            const groupsResponse = await fetch('http://localhost:5001/api/groups');
             const allGroups = await groupsResponse.json();
             const userGroups = allGroups.filter((group: any) => 
               group.users.some((u: User) => u.id === user.id)
@@ -71,7 +73,7 @@ const UserManagement: React.FC = () => {
 
   const fetchGroups = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/groups');
+      const response = await fetch('http://localhost:5001/api/groups');
       if (!response.ok) throw new Error('Failed to fetch groups');
       const data = await response.json();
       setGroups(data.map((g: any) => ({ id: g.id, name: g.name })));
@@ -85,8 +87,8 @@ const UserManagement: React.FC = () => {
     
     try {
       const url = editingUser 
-        ? `http://localhost:5000/api/users/${editingUser.id}`
-        : 'http://localhost:5000/api/users';
+        ? `http://localhost:5001/api/users/${editingUser.id}`
+        : 'http://localhost:5001/api/users';
       
       const method = editingUser ? 'PUT' : 'POST';
       
@@ -106,15 +108,15 @@ const UserManagement: React.FC = () => {
       setEditingUser(null);
       fetchUsers();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to save user');
+      showAlert('Fehler', err instanceof Error ? err.message : 'Failed to save user', '❌');
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Benutzer wirklich löschen?')) return;
+    if (!await showConfirm('Löschen', 'Benutzer wirklich löschen?', '🗑️')) return;
     
     try {
-      const response = await fetch(`http://localhost:5000/api/users/${id}`, {
+      const response = await fetch(`http://localhost:5001/api/users/${id}`, {
         method: 'DELETE',
       });
       
@@ -122,7 +124,7 @@ const UserManagement: React.FC = () => {
       
       fetchUsers();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete user');
+      showAlert('Fehler', err instanceof Error ? err.message : 'Failed to delete user', '❌');
     }
   };
 
@@ -151,7 +153,7 @@ const UserManagement: React.FC = () => {
     if (!selectedUser) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/groups/${groupId}/members`, {
+      const response = await fetch(`http://localhost:5001/api/groups/${groupId}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: selectedUser.id }),
@@ -164,7 +166,7 @@ const UserManagement: React.FC = () => {
 
       fetchUsers();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to add user to group');
+      showAlert('Fehler', err instanceof Error ? err.message : 'Failed to add user to group', '❌');
     }
   };
 
@@ -172,7 +174,7 @@ const UserManagement: React.FC = () => {
     if (!selectedUser) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/groups/${groupId}/members/${selectedUser.id}`, {
+      const response = await fetch(`http://localhost:5001/api/groups/${groupId}/members/${selectedUser.id}`, {
         method: 'DELETE',
       });
 
@@ -183,7 +185,7 @@ const UserManagement: React.FC = () => {
       const updatedUser = users.find(u => u.id === selectedUser.id);
       if (updatedUser) setSelectedUser(updatedUser);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to remove user from group');
+      showAlert('Fehler', err instanceof Error ? err.message : 'Failed to remove user from group', '❌');
     }
   };
 

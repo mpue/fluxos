@@ -7,10 +7,10 @@ services:
       dockerfile: Dockerfile
     container_name: fluxos-server-prod
     ports:
-      - "5000:5000"
+      - "5001:5001"
     environment:
       - NODE_ENV=production
-      - PORT=5000
+      - PORT=5001
     restart: unless-stopped
     networks:
       - fluxos-network

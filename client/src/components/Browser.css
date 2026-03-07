@@ -200,3 +200,46 @@
   border: none;
   background: white;
 }
+
+.browser-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 40px;
+  text-align: center;
+  color: #444;
+}
+
+.browser-error-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.browser-error h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #333;
+}
+
+.browser-error p {
+  margin: 0 0 24px;
+  font-size: 14px;
+  color: #666;
+}
+
+.browser-error-button {
+  padding: 10px 24px;
+  font-size: 14px;
+  background: #0078d4;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.browser-error-button:hover {
+  background: #005a9e;
+}

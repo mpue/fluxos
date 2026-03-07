@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useFileSystem } from '../contexts/FileSystemContext';
 import { useDesktop } from '../contexts/DesktopContext';
+import { useDialog } from '../contexts/DialogContext';
 import { FileSystemItem } from '../types/filesystem';
+import TextEditor from './TextEditor';
 import './FileExplorer.css';
 
 const FileExplorer: React.FC = () => {
@@ -23,6 +25,7 @@ const FileExplorer: React.FC = () => {
   } = useFileSystem();
 
   const { addWindow } = useDesktop();
+  const { showPrompt, showConfirm, showInfo } = useDialog();
 
   const [selectedItem, setSelectedItem] = useState<FileSystemItem | null>(null);
   const [renamingItem, setRenamingItem] = useState<string | null>(null);
@@ -75,10 +78,11 @@ const FileExplorer: React.FC = () => {
       addWindow({
         title: item.name,
         icon: '📝',
-        position: { x: 100, y: 100 },
+        position: { x: 150, y: 80 },
         size: { width: 800, height: 600 },
         isMinimized: false,
         isMaximized: false,
+        content: <TextEditor fileId={item.id} />,
       });
     }
   };
@@ -101,20 +105,20 @@ const FileExplorer: React.FC = () => {
     setContextMenu({ x, y, itemId });
   };
 
-  const handleCreateFolder = () => {
-    const name = prompt('Ordnername:');
+  const handleCreateFolder = async () => {
+    setContextMenu(null);
+    const name = await showPrompt('Neuer Ordner', 'Ordnername:');
     if (name) {
       createItem(name, 'folder', currentPath);
     }
-    setContextMenu(null);
   };
 
-  const handleCreateFile = () => {
-    const name = prompt('Dateiname:');
+  const handleCreateFile = async () => {
+    setContextMenu(null);
+    const name = await showPrompt('Neue Datei', 'Dateiname:');
     if (name) {
       createItem(name, 'file', currentPath);
     }
-    setContextMenu(null);
   };
 
   const handleRename = (itemId: string) => {
@@ -134,15 +138,15 @@ const FileExplorer: React.FC = () => {
     setRenameValue('');
   };
 
-  const handleDelete = (itemId: string) => {
+  const handleDelete = async (itemId: string) => {
     const item = getItemById(itemId);
-    if (item && confirm(`"${item.name}" wirklich löschen?`)) {
+    setContextMenu(null);
+    if (item && await showConfirm('Löschen', `"${item.name}" wirklich löschen?`, '🗑️')) {
       deleteItem(itemId);
       if (selectedItem?.id === itemId) {
         setSelectedItem(null);
       }
     }
-    setContextMenu(null);
   };
 
   const handleCopy = (itemId: string) => {
@@ -468,7 +472,7 @@ const FileExplorer: React.FC = () => {
                   <div onClick={() => {
                     const item = getItemById(contextMenu.itemId!);
                     if (item) {
-                      alert(`Name: ${item.name}\nTyp: ${item.type}\nGröße: ${item.type === 'file' ? formatFileSize(item.size || 0) : '-'}\nErstellt: ${formatDate(item.createdAt)}\nGeändert: ${formatDate(item.modifiedAt)}`);
+                      showInfo('Eigenschaften', `Name: ${item.name}\nTyp: ${item.type}\nGröße: ${item.type === 'file' ? formatFileSize(item.size || 0) : '-'}\nErstellt: ${formatDate(item.createdAt)}\nGeändert: ${formatDate(item.modifiedAt)}`);
                       setContextMenu(null);
                     }
                   }}>

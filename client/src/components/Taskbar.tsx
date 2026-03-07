@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDesktop } from '../contexts/DesktopContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useDialog } from '../contexts/DialogContext';
 import { getColorScheme } from '../utils/colorSchemes';
 import Calculator from './Calculator';
 import Notepad from './Notepad';
@@ -43,16 +44,17 @@ const Taskbar: React.FC = () => {
     });
   };
 
-  const handleShutdown = () => {
-    if (window.confirm('Möchten Sie FluxOS wirklich beenden?')) {
+  const { showConfirm } = useDialog();
+
+  const handleShutdown = async () => {
+    if (await showConfirm('Herunterfahren', 'Möchten Sie FluxOS wirklich beenden?', '⏻')) {
       window.close();
-      // Falls window.close() blockiert wird, leere Seite anzeigen
       document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:24px;font-family:sans-serif">FluxOS wurde heruntergefahren</div>';
     }
   };
 
-  const handleLogout = () => {
-    if (window.confirm('Möchten Sie sich wirklich abmelden?')) {
+  const handleLogout = async () => {
+    if (await showConfirm('Abmelden', 'Möchten Sie sich wirklich abmelden?', '🚪')) {
       logout();
     }
   };

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useDesktop } from '../contexts/DesktopContext';
+import { useDialog } from '../contexts/DialogContext';
 import { getColorScheme } from '../utils/colorSchemes';
 import './Notepad.css';
 
@@ -9,8 +10,10 @@ const Notepad: React.FC = () => {
   const [content, setContent] = useState('');
   const [fontSize, setFontSize] = useState(14);
 
-  const handleClear = () => {
-    if (content && window.confirm('Möchten Sie den Text wirklich löschen?')) {
+  const { showConfirm } = useDialog();
+
+  const handleClear = async () => {
+    if (content && await showConfirm('Neues Dokument', 'Möchten Sie den Text wirklich löschen?', '📄')) {
       setContent('');
     }
   };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useDesktop } from '../contexts/DesktopContext';
 import Window from './Window';
 import Taskbar from './Taskbar';
@@ -22,7 +22,7 @@ const Desktop: React.FC = () => {
     visible: false,
   });
 
-  const [desktopIcons] = useState<DesktopIconType[]>([
+  const [desktopIcons, setDesktopIcons] = useState<DesktopIconType[]>([
     {
       id: 'file-explorer',
       name: 'Datei-Explorer',
@@ -50,23 +50,10 @@ const Desktop: React.FC = () => {
           title: 'Dieser PC',
           icon: '🖥️',
           position: { x: 100, y: 100 },
-          size: { width: 600, height: 400 },
+          size: { width: 900, height: 600 },
           isMinimized: false,
           isMaximized: false,
-          content: (
-            <div>
-              <h2>Dieser PC</h2>
-              <p>Lokale Festplatten und Netzwerklaufwerke</p>
-              <div style={{ marginTop: '20px' }}>
-                <div style={{ padding: '10px', background: '#f0f0f0', marginBottom: '8px' }}>
-                  💿 Lokaler Datenträger (C:)
-                </div>
-                <div style={{ padding: '10px', background: '#f0f0f0', marginBottom: '8px' }}>
-                  💿 Lokaler Datenträger (D:)
-                </div>
-              </div>
-            </div>
-          ),
+          content: <FileExplorer />,
         });
       },
     },
@@ -179,11 +166,17 @@ const Desktop: React.FC = () => {
     },
   ]);
 
-  // Handle right-click on desktop background
+  const handleIconMove = useCallback((id: string, x: number, y: number) => {
+    setDesktopIcons(prev => prev.map(icon =>
+      icon.id === id ? { ...icon, position: { x, y } } : icon
+    ));
+  }, []);
+
+  // Handle right-click: always prevent browser context menu
   const handleContextMenu = (e: React.MouseEvent) => {
-    // Only show context menu if clicking on desktop background
+    e.preventDefault();
+    // Show custom context menu only on desktop background
     if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('desktop-background')) {
-      e.preventDefault();
       setContextMenu({
         x: e.clientX,
         y: e.clientY,
@@ -386,7 +379,7 @@ const Desktop: React.FC = () => {
       
       <div className="desktop-icons">
         {desktopIcons.map(icon => (
-          <DesktopIcon key={icon.id} icon={icon} />
+          <DesktopIcon key={icon.id} icon={icon} onMove={handleIconMove} />
         ))}
       </div>
 

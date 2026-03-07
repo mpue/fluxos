@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { AuthProvider } from './contexts/AuthContext'
 import { DesktopProvider } from './contexts/DesktopContext'
 import { FileSystemProvider } from './contexts/FileSystemContext'
+import { DialogProvider } from './contexts/DialogContext'
 import LoginScreen from './components/LoginScreen'
 import Desktop from './components/Desktop'
 import { useAuth } from './contexts/AuthContext'
@@ -44,7 +45,9 @@ function App() {
   return (
     <AuthProvider>
       <DesktopProvider>
-        <AppContent />
+        <DialogProvider>
+          <AppContent />
+        </DialogProvider>
       </DesktopProvider>
     </AuthProvider>
   );

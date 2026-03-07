@@ -95,11 +95,12 @@
 }
 
 /* Icons View */
-.icons-view {
+.file-explorer-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 16px;
+  gap: 8px;
   padding: 8px;
+  justify-items: start;
 }
 
 .file-item {
@@ -111,6 +112,7 @@
   border-radius: 4px;
   user-select: none;
   transition: background 0.2s;
+  width: 100%;
 }
 
 .file-item:hover {
@@ -145,38 +147,38 @@
 }
 
 /* List View */
-.list-view {
+.file-explorer-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
 
-.list-view thead {
+.file-explorer-table thead {
   background: #f0f0f0;
   border-bottom: 2px solid #ccc;
 }
 
-.list-view th {
+.file-explorer-table th {
   padding: 8px;
   text-align: left;
   font-weight: 600;
   border-bottom: 1px solid #ccc;
 }
 
-.list-view tbody tr {
+.file-explorer-table tbody tr {
   cursor: pointer;
   transition: background 0.2s;
 }
 
-.list-view tbody tr:hover {
+.file-explorer-table tbody tr:hover {
   background: #e8f4fd;
 }
 
-.list-view tbody tr.selected {
+.file-explorer-table tbody tr.selected {
   background: #cce8ff;
 }
 
-.list-view td {
+.file-explorer-table td {
   padding: 8px;
   border-bottom: 1px solid #eee;
 }
