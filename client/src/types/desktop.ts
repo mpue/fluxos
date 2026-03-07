@@ -26,6 +26,7 @@ export interface DesktopIcon {
   name: string;
   icon: string;
   position: Position;
+  isShortcut?: boolean;
   onDoubleClick: () => void;
 }
 

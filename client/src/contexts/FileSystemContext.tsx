@@ -1,5 +1,62 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { FileSystemItem, FileSystemItemType, ClipboardItem } from '../types/filesystem';
+
+// ─── IndexedDB-Helfer ───────────────────────────────────────────────────
+
+const DB_NAME = 'fluxos-fs';
+const DB_VERSION = 1;
+const STORE_NAME = 'items';
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function loadAllItems(): Promise<FileSystemItem[] | null> {
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+      req.onsuccess = () => {
+        const rows = req.result as FileSystemItem[];
+        if (rows.length === 0) { resolve(null); return; }
+        resolve(rows.map(item => ({
+          ...item,
+          createdAt: new Date(item.createdAt),
+          modifiedAt: new Date(item.modifiedAt),
+        })));
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return null;
+  }
+}
+
+async function saveAllItems(items: FileSystemItem[]): Promise<void> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    store.clear();
+    items.forEach(item => store.put(item));
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch { /* ignore */ }
+}
 
 interface FileSystemContextType {
   items: FileSystemItem[];
@@ -47,8 +104,7 @@ interface FileSystemProviderProps {
 }
 
 export const FileSystemProvider: React.FC<FileSystemProviderProps> = ({ children }) => {
-  const [items, setItems] = useState<FileSystemItem[]>(() => {
-    // Initialisiere mit Standard-Ordnerstruktur
+  const defaultItems = (): FileSystemItem[] => {
     const now = new Date();
     return [
       {
@@ -121,10 +177,29 @@ export const FileSystemProvider: React.FC<FileSystemProviderProps> = ({ children
         icon: '📝'
       }
     ];
-  });
+  };
+
+  const [items, setItems] = useState<FileSystemItem[]>(defaultItems);
+  const initialLoadDone = useRef(false);
+
+  // Beim Start: Daten aus IndexedDB laden
+  useEffect(() => {
+    loadAllItems().then(loaded => {
+      if (loaded && loaded.length > 0) {
+        setItems(loaded);
+      }
+      initialLoadDone.current = true;
+    });
+  }, []);
 
   const [currentPath, setCurrentPath] = useState<string>('root');
   const [clipboard, setClipboard] = useState<ClipboardItem | null>(null);
+
+  // Dateisystem in IndexedDB persistieren (nach initialem Laden)
+  useEffect(() => {
+    if (!initialLoadDone.current) return;
+    saveAllItems(items);
+  }, [items]);
 
   // Navigation
   const navigateTo = useCallback((path: string) => {

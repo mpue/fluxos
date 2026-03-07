@@ -12,9 +12,14 @@ import Notepad from './Notepad';
 import Tetris from './Tetris';
 import SpaceInvaders from './SpaceInvaders';
 import Sokoban from './Sokoban';
+import FluxiRun from './FluxiRun';
 import ImageViewer from './ImageViewer';
 import Spreadsheet from './Spreadsheet';
 import VectorEditor from './VectorEditor';
+import VideoPlayer from './VideoPlayer';
+import AppManager, { getInstalledApps } from './AppManager';
+import PieMenu, { PieMenuItem } from './PieMenu';
+import SystemInfo from './SystemInfo';
 import { DesktopIcon as DesktopIconType } from '../types/desktop';
 import { colorSchemes, getColorScheme } from '../utils/colorSchemes';
 import './Desktop.css';
@@ -22,11 +27,46 @@ import './Desktop.css';
 const Desktop: React.FC = () => {
   const { windows, addWindow, wallpaper, setWallpaper, colorScheme, setColorScheme } = useDesktop();
   
+  const [installedApps, setInstalledAppsState] = useState<Set<string>>(getInstalledApps);
+
+  useEffect(() => {
+    const handler = () => setInstalledAppsState(getInstalledApps());
+    window.addEventListener('fluxos-apps-changed', handler);
+    return () => window.removeEventListener('fluxos-apps-changed', handler);
+  }, []);
+
+  // Handle app open events from start menu
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const appId = (e as CustomEvent).detail?.appId;
+      if (!appId) return;
+      if (appId === 'system-info') {
+        addWindow({
+          title: 'Systeminformationen', icon: '💻',
+          position: { x: 300, y: 100 }, size: { width: 700, height: 600 },
+          isMinimized: false, isMaximized: false, content: <SystemInfo />,
+        });
+        return;
+      }
+      const icon = iconsRef.current.find(i => i.id === appId);
+      if (icon) icon.onDoubleClick();
+    };
+    window.addEventListener('fluxos-open-app', handler);
+    return () => window.removeEventListener('fluxos-open-app', handler);
+  }, [addWindow]);
+
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; visible: boolean }>({
     x: 0,
     y: 0,
     visible: false,
   });
+
+  const [pieMenu, setPieMenu] = useState<{ x: number; y: number; visible: boolean }>({
+    x: 0, y: 0, visible: false,
+  });
+
+  const [iconContextMenu, setIconContextMenu] = useState<{ x: number; y: number; iconId: string } | null>(null);
+  const [renamingIconId, setRenamingIconId] = useState<string | null>(null);
 
   const [desktopIcons, setDesktopIcons] = useState<DesktopIconType[]>(() => {
     const savedPositions: Record<string, { x: number; y: number }> = {};
@@ -229,6 +269,23 @@ const Desktop: React.FC = () => {
       },
     },
     {
+      id: 'fluxi-run',
+      name: 'Fluxi Run',
+      icon: '⚡',
+      position: savedPositions['fluxi-run'] || { x: 200, y: 20 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Fluxi Run',
+          icon: '⚡',
+          position: { x: 120, y: 30 },
+          size: { width: 680, height: 480 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <FluxiRun />,
+        });
+      },
+    },
+    {
       id: 'image-viewer',
       name: 'Bildbetrachter',
       icon: '🖼️',
@@ -276,6 +333,40 @@ const Desktop: React.FC = () => {
           isMinimized: false,
           isMaximized: false,
           content: <VectorEditor />,
+        });
+      },
+    },
+    {
+      id: 'video-player',
+      name: 'Video Player',
+      icon: '🎬',
+      position: savedPositions['video-player'] || { x: 110, y: 620 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Video Player',
+          icon: '🎬',
+          position: { x: 120, y: 40 },
+          size: { width: 900, height: 600 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <VideoPlayer />,
+        });
+      },
+    },
+    {
+      id: 'app-manager',
+      name: 'Programme',
+      icon: '📦',
+      position: savedPositions['app-manager'] || { x: 110, y: 520 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Programme & Features',
+          icon: '📦',
+          position: { x: 150, y: 60 },
+          size: { width: 800, height: 600 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <AppManager />,
         });
       },
     },
@@ -387,6 +478,34 @@ const Desktop: React.FC = () => {
     if (icon) icon.onDoubleClick();
   }, []);
 
+  const handleIconContextMenu = useCallback((id: string, e: React.MouseEvent) => {
+    setIconContextMenu({ x: e.clientX, y: e.clientY, iconId: id });
+    setPieMenu(prev => ({ ...prev, visible: false }));
+  }, []);
+
+  const handleIconRename = useCallback((id: string, newName: string) => {
+    setDesktopIcons(prev => prev.map(icon =>
+      icon.id === id ? { ...icon, name: newName } : icon
+    ));
+    setRenamingIconId(null);
+  }, []);
+
+  const handleDeleteIcon = useCallback((id: string) => {
+    const icon = iconsRef.current.find(i => i.id === id);
+    if (icon?.isShortcut) {
+      setDesktopIcons(prev => prev.filter(i => i.id !== id));
+    }
+    setIconContextMenu(null);
+  }, []);
+
+  // Close icon context menu on click anywhere
+  useEffect(() => {
+    if (!iconContextMenu) return;
+    const handler = () => setIconContextMenu(null);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [iconContextMenu]);
+
   const handleDesktopMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
     const target = e.target as HTMLElement;
@@ -452,13 +571,10 @@ const Desktop: React.FC = () => {
   // Handle right-click: always prevent browser context menu
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    // Show custom context menu only on desktop background
+    // Show pie menu only on desktop background
     if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('desktop-background')) {
-      setContextMenu({
-        x: e.clientX,
-        y: e.clientY,
-        visible: true,
-      });
+      setContextMenu({ x: e.clientX, y: e.clientY, visible: false });
+      setPieMenu({ x: e.clientX, y: e.clientY, visible: true });
     }
   };
 
@@ -650,18 +766,143 @@ const Desktop: React.FC = () => {
     });
   };
 
+  const pieMenuItems: PieMenuItem[] = [
+    {
+      id: 'pie-explorer',
+      icon: '📂',
+      label: 'Datei-Explorer',
+      onClick: () => addWindow({
+        title: 'Datei-Explorer', icon: '📂',
+        position: { x: 100, y: 80 }, size: { width: 900, height: 600 },
+        isMinimized: false, isMaximized: false, content: <FileExplorer />,
+      }),
+    },
+    {
+      id: 'pie-notepad',
+      icon: '📝',
+      label: 'Notizen',
+      onClick: () => addWindow({
+        title: 'Notizen', icon: '📝',
+        position: { x: 450, y: 100 }, size: { width: 700, height: 500 },
+        isMinimized: false, isMaximized: false, content: <Notepad />,
+      }),
+    },
+    {
+      id: 'pie-browser',
+      icon: '🌐',
+      label: 'Browser',
+      onClick: () => addWindow({
+        title: 'FluxOS Browser', icon: '🌐',
+        position: { x: 100, y: 80 }, size: { width: 1000, height: 700 },
+        isMinimized: false, isMaximized: false, content: <Browser />,
+      }),
+    },
+    {
+      id: 'pie-calculator',
+      icon: '🔢',
+      label: 'Rechner',
+      onClick: () => addWindow({
+        title: 'Rechner', icon: '🔢',
+        position: { x: 400, y: 150 }, size: { width: 400, height: 550 },
+        isMinimized: false, isMaximized: false, content: <Calculator />,
+      }),
+    },
+    {
+      id: 'pie-personalize',
+      icon: '🎨',
+      label: 'Personalisieren',
+      onClick: handlePersonalize,
+    },
+    {
+      id: 'pie-programs',
+      icon: '📦',
+      label: 'Programme',
+      onClick: () => addWindow({
+        title: 'Programme & Features', icon: '📦',
+        position: { x: 150, y: 60 }, size: { width: 800, height: 600 },
+        isMinimized: false, isMaximized: false, content: <AppManager />,
+      }),
+    },
+    {
+      id: 'pie-sysinfo',
+      icon: '💻',
+      label: 'Systeminformationen',
+      onClick: () => addWindow({
+        title: 'Systeminformationen', icon: '💻',
+        position: { x: 300, y: 100 }, size: { width: 700, height: 600 },
+        isMinimized: false, isMaximized: false, content: <SystemInfo />,
+      }),
+    },
+    {
+      id: 'pie-refresh',
+      icon: '🔄',
+      label: 'Aktualisieren',
+      onClick: handleRefresh,
+    },
+  ];
+
+  // Handle drop from start menu to create desktop shortcut
+  const handleDesktopDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const appId = e.dataTransfer.getData('application/fluxos-app');
+    if (!appId) return;
+    const sourceIcon = iconsRef.current.find(i => i.id === appId);
+    if (!sourceIcon) return;
+
+    // Check if a shortcut for this app already exists
+    const shortcutId = `shortcut-${appId}`;
+    const existingShortcut = iconsRef.current.find(i => i.id === shortcutId);
+    if (existingShortcut) {
+      // Reposition the existing shortcut
+      setDesktopIcons(prev => prev.map(icon =>
+        icon.id === shortcutId
+          ? { ...icon, position: { x: e.clientX - 45, y: e.clientY - 45 } }
+          : icon
+      ));
+    } else {
+      // Create a new shortcut
+      const newShortcut: DesktopIconType = {
+        id: shortcutId,
+        name: sourceIcon.name,
+        icon: sourceIcon.icon,
+        position: { x: e.clientX - 45, y: e.clientY - 45 },
+        isShortcut: true,
+        onDoubleClick: sourceIcon.onDoubleClick,
+      };
+      setDesktopIcons(prev => [...prev, newShortcut]);
+    }
+  }, []);
+
+  const handleDesktopDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('application/fluxos-app')) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
+
   return (
-    <div className="desktop" onContextMenu={handleContextMenu} onMouseDown={handleDesktopMouseDown}>
+    <div
+      className="desktop"
+      onContextMenu={handleContextMenu}
+      onMouseDown={handleDesktopMouseDown}
+      onDrop={handleDesktopDrop}
+      onDragOver={handleDesktopDragOver}
+    >
       <div className="desktop-background" style={{ background: wallpaper }}></div>
       
       <div className="desktop-icons">
-        {desktopIcons.map(icon => (
+        {desktopIcons
+          .filter(icon => icon.id === 'app-manager' || installedApps.has(icon.id) || icon.isShortcut)
+          .map(icon => (
           <DesktopIcon
             key={icon.id}
             icon={icon}
             selected={selectedIds.has(icon.id)}
+            renaming={renamingIconId === icon.id}
             onMouseDown={handleIconMouseDown}
             onDoubleClick={handleIconDoubleClick}
+            onContextMenu={handleIconContextMenu}
+            onRename={handleIconRename}
           />
         ))}
       </div>
@@ -684,69 +925,47 @@ const Desktop: React.FC = () => {
         ))}
       </div>
 
-      {/* Desktop Context Menu */}
-      {contextMenu.visible && (
-        <div 
-          className="desktop-context-menu"
-          style={{ 
-            left: contextMenu.x, 
-            top: contextMenu.y 
-          }}
-        >
-          <div className="context-menu-section">
-            <div className="context-menu-item" onClick={handleRefresh}>
-              <span className="context-menu-icon">🔄</span>
-              <span>Aktualisieren</span>
-            </div>
-          </div>
-          
-          <div className="context-menu-divider"></div>
-          
-          <div className="context-menu-section">
-            <div className="context-menu-item context-menu-item-submenu">
-              <span className="context-menu-icon">➕</span>
-              <span>Neu</span>
-              <span className="context-menu-arrow">▶</span>
-            </div>
-          </div>
-          
-          <div className="context-menu-divider"></div>
-          
-          <div className="context-menu-section">
-            <div className="context-menu-item context-menu-item-submenu">
-              <span className="context-menu-icon">👁️</span>
-              <span>Ansicht</span>
-              <span className="context-menu-arrow">▶</span>
-            </div>
-            <div className="context-menu-item context-menu-item-submenu">
-              <span className="context-menu-icon">📊</span>
-              <span>Sortieren nach</span>
-              <span className="context-menu-arrow">▶</span>
-            </div>
-          </div>
-          
-          <div className="context-menu-divider"></div>
-          
-          <div className="context-menu-section">
-            <div 
-              className="context-menu-item" 
-              onClick={handlePersonalize}
-              style={{
-                background: undefined,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = `linear-gradient(90deg, ${getColorScheme(colorScheme).primary}15, ${getColorScheme(colorScheme).secondary}10)`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = '';
-              }}
-            >
-              <span className="context-menu-icon">🎨</span>
-              <span>Personalisieren</span>
-            </div>
-          </div>
-        </div>
+      {/* Pie Menu */}
+      {pieMenu.visible && (
+        <PieMenu
+          x={pieMenu.x}
+          y={pieMenu.y}
+          items={pieMenuItems}
+          onClose={() => setPieMenu(prev => ({ ...prev, visible: false }))}
+          accentColor={getColorScheme(colorScheme).primary}
+        />
       )}
+
+      {/* Icon Context Menu */}
+      {iconContextMenu && (() => {
+        const targetIcon = desktopIcons.find(i => i.id === iconContextMenu.iconId);
+        return (
+          <div
+            className="icon-context-menu"
+            style={{ left: iconContextMenu.x, top: iconContextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="icon-ctx-item" onClick={() => {
+              if (targetIcon) targetIcon.onDoubleClick();
+              setIconContextMenu(null);
+            }}>
+              ▶ Öffnen
+            </div>
+            <div className="icon-ctx-separator" />
+            <div className="icon-ctx-item" onClick={() => {
+              setRenamingIconId(iconContextMenu.iconId);
+              setIconContextMenu(null);
+            }}>
+              ✏️ Umbenennen
+            </div>
+            {targetIcon?.isShortcut && (
+              <div className="icon-ctx-item icon-ctx-delete" onClick={() => handleDeleteIcon(iconContextMenu.iconId)}>
+                🗑️ Verknüpfung löschen
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       <Taskbar />
     </div>

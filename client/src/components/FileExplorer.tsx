@@ -6,6 +6,7 @@ import { useDialog } from '../contexts/DialogContext';
 import { FileSystemItem } from '../types/filesystem';
 import TextEditor from './TextEditor';
 import ImageViewer from './ImageViewer';
+import VideoPlayer from './VideoPlayer';
 import './FileExplorer.css';
 
 const FileExplorer: React.FC = () => {
@@ -63,6 +64,16 @@ const FileExplorer: React.FC = () => {
       case 'jpg':
       case 'jpeg':
       case 'gif': return '🖼️';
+      case 'mp4':
+      case 'webm':
+      case 'ogg':
+      case 'mov':
+      case 'avi':
+      case 'mkv': return '🎬';
+      case 'mp3':
+      case 'wav':
+      case 'flac':
+      case 'aac': return '🎵';
       default: return '📄';
     }
   };
@@ -78,6 +89,8 @@ const FileExplorer: React.FC = () => {
     } else {
       const ext = item.extension?.toLowerCase();
       const imageExts = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp', 'ico'];
+      const videoExts = ['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'];
+      const audioExts = ['mp3', 'wav', 'flac', 'aac', 'ogg'];
       if (ext && imageExts.includes(ext) && item.content) {
         addWindow({
           title: item.name,
@@ -87,6 +100,16 @@ const FileExplorer: React.FC = () => {
           isMinimized: false,
           isMaximized: false,
           content: <ImageViewer src={item.content} fileName={item.name} />,
+        });
+      } else if (ext && (videoExts.includes(ext) || audioExts.includes(ext)) && item.content) {
+        addWindow({
+          title: item.name,
+          icon: '🎬',
+          position: { x: 120, y: 40 },
+          size: { width: 900, height: 600 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <VideoPlayer src={item.content} fileName={item.name} />,
         });
       } else {
         addWindow({

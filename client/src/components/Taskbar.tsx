@@ -1,21 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDesktop } from '../contexts/DesktopContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useDialog } from '../contexts/DialogContext';
 import { getColorScheme } from '../utils/colorSchemes';
-import Calculator from './Calculator';
-import Notepad from './Notepad';
-import SystemInfo from './SystemInfo';
-import FileExplorer from './FileExplorer';
-import Browser from './Browser';
+import { APP_REGISTRY, getInstalledApps } from './AppManager';
 import './Taskbar.css';
 
+const CATEGORY_ORDER = ['System', 'Internet', 'Büro', 'Multimedia', 'Zubehör', 'Verwaltung', 'Spiele'];
+
 const Taskbar: React.FC = () => {
-  const { windows, focusWindow, minimizeWindow, addWindow, colorScheme } = useDesktop();
+  const { windows, focusWindow, minimizeWindow, colorScheme } = useDesktop();
   const { user, logout } = useAuth();
   const currentColorScheme = getColorScheme(colorScheme);
   const [showStartMenu, setShowStartMenu] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [installedApps, setInstalledLocal] = useState<Set<string>>(getInstalledApps);
+
+  useEffect(() => {
+    const handler = () => setInstalledLocal(getInstalledApps());
+    window.addEventListener('fluxos-apps-changed', handler);
+    return () => window.removeEventListener('fluxos-apps-changed', handler);
+  }, []);
 
   React.useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -59,67 +64,23 @@ const Taskbar: React.FC = () => {
     }
   };
 
-  const openApp = (appName: string) => {
+  const openAppById = (appId: string) => {
     setShowStartMenu(false);
-    
-    switch(appName) {
-      case 'fileexplorer':
-        addWindow({
-          title: 'Datei-Explorer',
-          icon: '📂',
-          position: { x: 100, y: 80 },
-          size: { width: 900, height: 600 },
-          isMinimized: false,
-          isMaximized: false,
-          content: <FileExplorer />,
-        });
-        break;
-      case 'browser':
-        addWindow({
-          title: 'FluxOS Browser',
-          icon: '🌐',
-          position: { x: 100, y: 80 },
-          size: { width: 1000, height: 700 },
-          isMinimized: false,
-          isMaximized: false,
-          content: <Browser />,
-        });
-        break;
-      case 'calculator':
-        addWindow({
-          title: 'Rechner',
-          icon: '🔢',
-          position: { x: 400, y: 150 },
-          size: { width: 400, height: 550 },
-          isMinimized: false,
-          isMaximized: false,
-          content: <Calculator />,
-        });
-        break;
-      case 'notepad':
-        addWindow({
-          title: 'Notizen',
-          icon: '📝',
-          position: { x: 450, y: 100 },
-          size: { width: 700, height: 500 },
-          isMinimized: false,
-          isMaximized: false,
-          content: <Notepad />,
-        });
-        break;
-      case 'systeminfo':
-        addWindow({
-          title: 'Systeminformationen',
-          icon: '💻',
-          position: { x: 300, y: 100 },
-          size: { width: 700, height: 600 },
-          isMinimized: false,
-          isMaximized: false,
-          content: <SystemInfo />,
-        });
-        break;
-    }
+    window.dispatchEvent(new CustomEvent('fluxos-open-app', { detail: { appId } }));
   };
+
+  const handleDragStart = (e: React.DragEvent, appId: string) => {
+    e.dataTransfer.setData('application/fluxos-app', appId);
+    e.dataTransfer.effectAllowed = 'copy';
+    // Close start menu after a short delay so drag ghost is visible
+    setTimeout(() => setShowStartMenu(false), 150);
+  };
+
+  // Build categorized list of installed apps
+  const installedAppList = APP_REGISTRY.filter(app => installedApps.has(app.id));
+  const groupedApps = CATEGORY_ORDER
+    .map(cat => ({ category: cat, apps: installedAppList.filter(a => a.category === cat) }))
+    .filter(g => g.apps.length > 0);
 
   return (
     <div className="taskbar">
@@ -181,24 +142,32 @@ const Taskbar: React.FC = () => {
             </div>
           </div>
           <div className="start-menu-content">
-            <div className="start-menu-section">
-              <div className="start-menu-item" onClick={() => openApp('fileexplorer')}>
-                📂 <span>Datei-Explorer</span>
-              </div>
-              <div className="start-menu-item" onClick={() => openApp('browser')}>
-                🌐 <span>Browser</span>
-              </div>
-              <div className="start-menu-item" onClick={() => openApp('calculator')}>
-                🔢 <span>Rechner</span>
-              </div>
-              <div className="start-menu-item" onClick={() => openApp('notepad')}>
-                📝 <span>Notizen</span>
-              </div>
+            <div className="start-menu-apps">
+              {groupedApps.map(({ category, apps }) => (
+                <div key={category}>
+                  <div className="start-menu-category">{category}</div>
+                  {apps.map(app => (
+                    <div
+                      key={app.id}
+                      className="start-menu-item"
+                      onClick={() => openAppById(app.id)}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, app.id)}
+                      title="Zum Desktop ziehen für Verknüpfung"
+                    >
+                      {app.icon} <span>{app.name}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
             <div className="start-menu-separator"></div>
             <div className="start-menu-section">
-              <div className="start-menu-item" onClick={() => openApp('systeminfo')}>
+              <div className="start-menu-item" onClick={() => openAppById('system-info')}>
                 💻 <span>Systeminformationen</span>
+              </div>
+              <div className="start-menu-item" onClick={() => openAppById('app-manager')}>
+                📦 <span>Programme &amp; Features</span>
               </div>
             </div>
             <div className="start-menu-separator"></div>
