@@ -19,6 +19,7 @@ import Spreadsheet from './Spreadsheet';
 import VectorEditor from './VectorEditor';
 import VideoPlayer from './VideoPlayer';
 import AppManager, { getInstalledApps } from './AppManager';
+import CodeEditor from './CodeEditor';
 import PieMenu, { PieMenuItem } from './PieMenu';
 import SystemInfo from './SystemInfo';
 import { DesktopIcon as DesktopIconType } from '../types/desktop';
@@ -385,6 +386,23 @@ const Desktop: React.FC = () => {
           isMinimized: false,
           isMaximized: false,
           content: <AppManager />,
+        });
+      },
+    },
+    {
+      id: 'code-editor',
+      name: 'Code Editor',
+      icon: '</>' ,
+      position: savedPositions['code-editor'] || { x: 200, y: 220 },
+      onDoubleClick: () => {
+        addWindow({
+          title: 'Code Editor',
+          icon: '</>',
+          position: { x: 80, y: 40 },
+          size: { width: 950, height: 650 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <CodeEditor />,
         });
       },
     },
