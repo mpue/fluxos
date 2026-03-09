@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useFileSystem } from '../contexts/FileSystemContext';
 import { useDesktop } from '../contexts/DesktopContext';
 import { FileSystemItem } from '../types/filesystem';
@@ -181,6 +181,112 @@ function getLanguageFromExtension(ext: string): string {
   return map[ext] || 'javascript';
 }
 
+// ─── Autocomplete Data ──────────────────────────────────────────────────
+
+interface CompletionItem {
+  label: string;
+  kind: 'keyword' | 'type' | 'builtin' | 'snippet' | 'function' | 'property' | 'identifier';
+  detail?: string;
+  insertText?: string;
+}
+
+const JS_COMPLETIONS: CompletionItem[] = [
+  // Keywords
+  ...Array.from(JS_KEYWORDS).map(k => ({ label: k, kind: 'keyword' as const, detail: 'Schlüsselwort' })),
+  // Types
+  ...Array.from(TS_TYPES).map(k => ({ label: k, kind: 'type' as const, detail: 'Typ' })),
+  // Builtins
+  ...Array.from(BUILTINS).map(k => ({ label: k, kind: 'builtin' as const, detail: 'Built-in' })),
+  // Console methods
+  { label: 'console.log', kind: 'function', detail: 'Ausgabe in Konsole', insertText: 'console.log($0)' },
+  { label: 'console.error', kind: 'function', detail: 'Fehlerausgabe', insertText: 'console.error($0)' },
+  { label: 'console.warn', kind: 'function', detail: 'Warnung', insertText: 'console.warn($0)' },
+  { label: 'console.info', kind: 'function', detail: 'Info-Ausgabe', insertText: 'console.info($0)' },
+  // Common methods
+  { label: 'addEventListener', kind: 'function', detail: 'Event-Listener', insertText: "addEventListener('$0', () => {\n  \n})" },
+  { label: 'querySelector', kind: 'function', detail: 'DOM-Element finden', insertText: "querySelector('$0')" },
+  { label: 'getElementById', kind: 'function', detail: 'Element nach ID', insertText: "getElementById('$0')" },
+  { label: 'createElement', kind: 'function', detail: 'Element erstellen', insertText: "createElement('$0')" },
+  { label: 'forEach', kind: 'function', detail: 'Array iterieren', insertText: 'forEach(($0) => {\n  \n})' },
+  { label: 'map', kind: 'function', detail: 'Array abbilden', insertText: 'map(($0) => {\n  \n})' },
+  { label: 'filter', kind: 'function', detail: 'Array filtern', insertText: 'filter(($0) => )' },
+  { label: 'reduce', kind: 'function', detail: 'Array reduzieren', insertText: 'reduce((acc, $0) => , )' },
+  { label: 'push', kind: 'function', detail: 'Element hinzufügen' },
+  { label: 'pop', kind: 'function', detail: 'Letztes Element entfernen' },
+  { label: 'splice', kind: 'function', detail: 'Array manipulieren' },
+  { label: 'slice', kind: 'function', detail: 'Teilarray' },
+  { label: 'indexOf', kind: 'function', detail: 'Index finden' },
+  { label: 'includes', kind: 'function', detail: 'Enthält?' },
+  { label: 'toString', kind: 'function', detail: 'In String umwandeln' },
+  { label: 'JSON.stringify', kind: 'function', detail: 'Objekt in JSON', insertText: 'JSON.stringify($0)' },
+  { label: 'JSON.parse', kind: 'function', detail: 'JSON in Objekt', insertText: 'JSON.parse($0)' },
+  { label: 'Math.random', kind: 'function', detail: 'Zufallszahl 0-1', insertText: 'Math.random()' },
+  { label: 'Math.floor', kind: 'function', detail: 'Abrunden', insertText: 'Math.floor($0)' },
+  { label: 'Math.ceil', kind: 'function', detail: 'Aufrunden', insertText: 'Math.ceil($0)' },
+  { label: 'Math.round', kind: 'function', detail: 'Runden', insertText: 'Math.round($0)' },
+  { label: 'Math.max', kind: 'function', detail: 'Maximum', insertText: 'Math.max($0)' },
+  { label: 'Math.min', kind: 'function', detail: 'Minimum', insertText: 'Math.min($0)' },
+  { label: 'parseInt', kind: 'function', detail: 'String zu Ganzzahl', insertText: 'parseInt($0)' },
+  { label: 'parseFloat', kind: 'function', detail: 'String zu Dezimalzahl', insertText: 'parseFloat($0)' },
+  { label: 'setTimeout', kind: 'function', detail: 'Verzögert ausführen', insertText: 'setTimeout(() => {\n  $0\n}, )' },
+  { label: 'setInterval', kind: 'function', detail: 'Wiederholt ausführen', insertText: 'setInterval(() => {\n  $0\n}, )' },
+  { label: 'Promise', kind: 'builtin', detail: 'Asynchrones Versprechen' },
+  // Properties
+  { label: 'length', kind: 'property', detail: 'Länge' },
+  { label: 'prototype', kind: 'property', detail: 'Prototyp' },
+  { label: 'constructor', kind: 'property', detail: 'Konstruktor' },
+  { label: 'innerHTML', kind: 'property', detail: 'HTML-Inhalt' },
+  { label: 'textContent', kind: 'property', detail: 'Textinhalt' },
+  { label: 'style', kind: 'property', detail: 'CSS-Stil' },
+  { label: 'className', kind: 'property', detail: 'CSS-Klasse' },
+  { label: 'value', kind: 'property', detail: 'Wert' },
+  // Snippets
+  { label: 'function', kind: 'snippet', detail: 'Funktion', insertText: 'function $0() {\n  \n}' },
+  { label: 'arrow', kind: 'snippet', detail: 'Pfeilfunktion', insertText: '($0) => {\n  \n}' },
+  { label: 'if', kind: 'snippet', detail: 'Bedingung', insertText: 'if ($0) {\n  \n}' },
+  { label: 'ifelse', kind: 'snippet', detail: 'Bedingung mit Sonst', insertText: 'if ($0) {\n  \n} else {\n  \n}' },
+  { label: 'for', kind: 'snippet', detail: 'For-Schleife', insertText: 'for (let i = 0; i < $0; i++) {\n  \n}' },
+  { label: 'forof', kind: 'snippet', detail: 'For-of-Schleife', insertText: 'for (const $0 of ) {\n  \n}' },
+  { label: 'forin', kind: 'snippet', detail: 'For-in-Schleife', insertText: 'for (const $0 in ) {\n  \n}' },
+  { label: 'while', kind: 'snippet', detail: 'While-Schleife', insertText: 'while ($0) {\n  \n}' },
+  { label: 'switch', kind: 'snippet', detail: 'Switch-Anweisung', insertText: 'switch ($0) {\n  case :\n    break;\n  default:\n    break;\n}' },
+  { label: 'trycatch', kind: 'snippet', detail: 'Try-Catch', insertText: 'try {\n  $0\n} catch (e) {\n  \n}' },
+  { label: 'class', kind: 'snippet', detail: 'Klasse', insertText: 'class $0 {\n  constructor() {\n    \n  }\n}' },
+  { label: 'import', kind: 'snippet', detail: 'Import', insertText: "import { $0 } from '';" },
+  { label: 'export', kind: 'snippet', detail: 'Export', insertText: 'export $0' },
+  { label: 'render', kind: 'function', detail: 'HTML-Ausgabe (FluxOS)', insertText: "render(`\n  <div>\n    $0\n  </div>\n`)" },
+];
+
+const COMPLETION_ICONS: Record<string, string> = {
+  keyword: '🔑',
+  type: '🔷',
+  builtin: '📦',
+  snippet: '✂️',
+  function: 'ƒ',
+  property: '🔹',
+  identifier: '𝑥',
+};
+
+function extractIdentifiers(code: string): CompletionItem[] {
+  const ids = new Set<string>();
+  const regex = /\b([a-zA-Z_$][a-zA-Z0-9_$]{2,})\b/g;
+  let m;
+  while ((m = regex.exec(code)) !== null) {
+    const word = m[1];
+    if (!JS_KEYWORDS.has(word) && !TS_TYPES.has(word) && !BUILTINS.has(word)
+        && word !== 'true' && word !== 'false' && word !== 'null' && word !== 'undefined') {
+      ids.add(word);
+    }
+  }
+  return Array.from(ids).map(id => ({ label: id, kind: 'identifier', detail: 'Bezeichner' }));
+}
+
+function getWordAtCursor(text: string, pos: number): { word: string; start: number } {
+  let start = pos;
+  while (start > 0 && /[a-zA-Z0-9_$.]/.test(text[start - 1])) start--;
+  return { word: text.slice(start, pos), start };
+}
+
 // ─── Script Runner Component ────────────────────────────────────────────
 
 interface OutputLine {
@@ -196,8 +302,9 @@ interface ScriptRunnerProps {
 const ScriptRunner: React.FC<ScriptRunnerProps> = ({ code, fileName }) => {
   const [output, setOutput] = useState<OutputLine[]>([]);
   const [isRunning, setIsRunning] = useState(false);
-  const [renderContent, setRenderContent] = useState<React.ReactNode | null>(null);
+  const [showRender, setShowRender] = useState(false);
   const outputRef = useRef<HTMLDivElement>(null);
+  const renderFrameRef = useRef<HTMLIFrameElement>(null);
 
   const addOutput = useCallback((text: string, type: OutputLine['type'] = 'log') => {
     setOutput(prev => [...prev, { text, type }]);
@@ -214,7 +321,7 @@ const ScriptRunner: React.FC<ScriptRunnerProps> = ({ code, fileName }) => {
 
     setOutput([{ text: `▶ Skript "${fileName}" gestartet...`, type: 'system' }]);
     setIsRunning(true);
-    setRenderContent(null);
+    setShowRender(false);
 
     // Escape the user code for embedding in srcdoc (handle </script> in strings)
     const escapedCode = code.replace(/<\/script>/gi, '<\\/script>');
@@ -253,9 +360,13 @@ __postMsg('done', '');
         return;
       }
       if (e.data.type === 'render') {
-        setRenderContent(
-          <div dangerouslySetInnerHTML={{ __html: e.data.text }} />
-        );
+        // Show rendered HTML in the visible iframe
+        setShowRender(true);
+        setTimeout(() => {
+          if (renderFrameRef.current) {
+            renderFrameRef.current.srcdoc = `<!DOCTYPE html><html><head><style>body{margin:0;font-family:sans-serif;color:#cdd6f4;background:#1e1e2e;}</style></head><body>${e.data.text}</body></html>`;
+          }
+        });
         return;
       }
       setOutput(prev => [...prev, { text: e.data.text, type: e.data.type }]);
@@ -293,11 +404,19 @@ __postMsg('done', '');
       <div className="script-runner-toolbar">
         <span>📜 {fileName}</span>
         <div style={{ flex: 1 }} />
+        {showRender && (
+          <button onClick={() => setShowRender(false)}>📝 Konsole</button>
+        )}
         <button onClick={runScript}>🔄 Neu starten</button>
-        <button onClick={() => setOutput([])}>🗑️ Ausgabe leeren</button>
+        <button onClick={() => setOutput([])}>🗑️ Leeren</button>
       </div>
-      {renderContent ? (
-        <div className="script-runner-render">{renderContent}</div>
+      {showRender ? (
+        <iframe
+          ref={renderFrameRef}
+          className="script-runner-render-frame"
+          sandbox="allow-scripts"
+          title="Script Output"
+        />
       ) : (
         <div className="script-runner-output" ref={outputRef}>
           {output.map((line, i) => (
@@ -343,12 +462,27 @@ const CodeEditor: React.FC<CodeEditorProps> = ({ fileId }) => {
   const [newFileName, setNewFileName] = useState('');
   const [newFileTemplate, setNewFileTemplate] = useState('empty');
 
+  // Autocomplete state
+  const [acVisible, setAcVisible] = useState(false);
+  const [acItems, setAcItems] = useState<CompletionItem[]>([]);
+  const [acIndex, setAcIndex] = useState(0);
+  const [acPos, setAcPos] = useState({ top: 0, left: 0 });
+  const acRef = useRef<HTMLDivElement>(null);
+  const acWordRef = useRef({ word: '', start: 0 });
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLDivElement>(null);
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const newFileInputRef = useRef<HTMLInputElement>(null);
 
   const activeTab = tabs.find(t => t.id === activeTabId) || null;
+
+  // Memoized completions including identifiers from code
+  const allCompletions = useMemo(() => {
+    if (!activeTab) return JS_COMPLETIONS;
+    const ids = extractIdentifiers(activeTab.content);
+    return [...JS_COMPLETIONS, ...ids];
+  }, [activeTab?.content]);
 
   // Load file from FS if fileId is provided
   useEffect(() => {
@@ -556,12 +690,158 @@ render(app);
     }
   }, []);
 
-  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if (!activeTabId) return;
-    updateTabContent(activeTabId, e.target.value);
+  // Calculate caret coordinates relative to textarea wrapper
+  const getCaretCoordinates = useCallback((ta: HTMLTextAreaElement, pos: number) => {
+    const mirror = document.createElement('div');
+    const style = window.getComputedStyle(ta);
+    mirror.style.position = 'absolute';
+    mirror.style.visibility = 'hidden';
+    mirror.style.whiteSpace = 'pre';
+    mirror.style.font = style.font;
+    mirror.style.padding = style.padding;
+    mirror.style.border = style.border;
+    mirror.style.width = style.width;
+    mirror.style.tabSize = style.tabSize;
+    mirror.style.letterSpacing = style.letterSpacing;
+
+    const textBefore = ta.value.substring(0, pos);
+    const lines = textBefore.split('\n');
+    const lineHeight = parseFloat(style.lineHeight);
+    const top = (lines.length) * lineHeight - ta.scrollTop + 4;
+
+    // Measure last line width
+    const lastLine = lines[lines.length - 1];
+    mirror.textContent = lastLine;
+    document.body.appendChild(mirror);
+    const left = mirror.scrollWidth + parseFloat(style.paddingLeft) - ta.scrollLeft;
+    document.body.removeChild(mirror);
+
+    return { top, left };
+  }, []);
+
+  const applyCompletion = useCallback((item: CompletionItem) => {
+    if (!activeTabId || !textareaRef.current) return;
+    const ta = textareaRef.current;
+    const { word, start } = acWordRef.current;
+    const value = ta.value;
+    const insertText = item.insertText || item.label;
+    const cursorMarker = insertText.indexOf('$0');
+    const cleanText = insertText.replace('$0', '');
+    const newValue = value.slice(0, start) + cleanText + value.slice(start + word.length);
+    updateTabContent(activeTabId, newValue);
+    setAcVisible(false);
+
+    const newPos = cursorMarker >= 0 ? start + cursorMarker : start + cleanText.length;
+    setTimeout(() => {
+      ta.selectionStart = ta.selectionEnd = newPos;
+      ta.focus();
+    });
   }, [activeTabId, updateTabContent]);
 
+  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    if (!activeTabId) return;
+    const value = e.target.value;
+    updateTabContent(activeTabId, value);
+
+    // If autocomplete is open, update the filtered list as user types
+    if (acVisible) {
+      const ta = e.target;
+      const pos = ta.selectionStart;
+      const { word, start } = getWordAtCursor(value, pos);
+      acWordRef.current = { word, start };
+
+      if (word.length >= 1) {
+        const lower = word.toLowerCase();
+        const filtered = allCompletions
+          .filter(c => c.label.toLowerCase().includes(lower) && c.label.toLowerCase() !== lower)
+          .sort((a, b) => {
+            const aStarts = a.label.toLowerCase().startsWith(lower) ? 0 : 1;
+            const bStarts = b.label.toLowerCase().startsWith(lower) ? 0 : 1;
+            if (aStarts !== bStarts) return aStarts - bStarts;
+            return a.label.localeCompare(b.label);
+          })
+          .slice(0, 12);
+
+        if (filtered.length > 0) {
+          const caretCoords = getCaretCoordinates(ta, start);
+          setAcItems(filtered);
+          setAcIndex(0);
+          setAcPos(caretCoords);
+        } else {
+          setAcVisible(false);
+        }
+      } else {
+        setAcVisible(false);
+      }
+    }
+  }, [activeTabId, updateTabContent, allCompletions, acVisible, getCaretCoordinates]);
+
+  // Trigger autocomplete with Ctrl+Space
+  const triggerAutocomplete = useCallback(() => {
+    if (!activeTabId || !textareaRef.current) return;
+    const ta = textareaRef.current;
+    const pos = ta.selectionStart;
+    const value = ta.value;
+    const { word, start } = getWordAtCursor(value, pos);
+    acWordRef.current = { word, start };
+
+    const lower = word.toLowerCase();
+    const filtered = (word.length >= 1
+      ? allCompletions.filter(c => c.label.toLowerCase().includes(lower) && c.label.toLowerCase() !== lower)
+      : allCompletions
+    )
+      .sort((a, b) => {
+        if (!lower) return a.label.localeCompare(b.label);
+        const aStarts = a.label.toLowerCase().startsWith(lower) ? 0 : 1;
+        const bStarts = b.label.toLowerCase().startsWith(lower) ? 0 : 1;
+        if (aStarts !== bStarts) return aStarts - bStarts;
+        return a.label.localeCompare(b.label);
+      })
+      .slice(0, 12);
+
+    if (filtered.length > 0) {
+      const caretCoords = getCaretCoordinates(ta, start);
+      setAcItems(filtered);
+      setAcIndex(0);
+      setAcPos(caretCoords);
+      setAcVisible(true);
+    }
+  }, [activeTabId, allCompletions, getCaretCoordinates]);
+
   const handleKeyDownInEditor = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Ctrl+Space: trigger autocomplete
+    if ((e.ctrlKey || e.metaKey) && e.key === ' ') {
+      e.preventDefault();
+      triggerAutocomplete();
+      return;
+    }
+
+    // Autocomplete navigation
+    if (acVisible) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setAcIndex(prev => (prev + 1) % acItems.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setAcIndex(prev => (prev - 1 + acItems.length) % acItems.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        if (acItems.length > 0) {
+          e.preventDefault();
+          applyCompletion(acItems[acIndex]);
+          return;
+        }
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setAcVisible(false);
+        return;
+      }
+    }
+
     // Tab key inserts spaces
     if (e.key === 'Tab') {
       e.preventDefault();
@@ -640,7 +920,7 @@ render(app);
         });
       }
     }
-  }, [activeTabId, updateTabContent]);
+  }, [activeTabId, updateTabContent, acVisible, acItems, acIndex, applyCompletion, triggerAutocomplete]);
 
   // Update cursor position
   const handleCursorUpdate = useCallback(() => {
@@ -784,13 +1064,36 @@ render(app);
                     onChange={handleTextChange}
                     onKeyDown={handleKeyDownInEditor}
                     onScroll={handleScroll}
-                    onClick={handleCursorUpdate}
+                    onClick={() => { handleCursorUpdate(); setAcVisible(false); }}
                     onKeyUp={handleCursorUpdate}
+                    onBlur={() => setTimeout(() => setAcVisible(false), 150)}
                     spellCheck={false}
                     autoComplete="off"
                     autoCorrect="off"
                     autoCapitalize="off"
                   />
+                  {acVisible && acItems.length > 0 && (
+                    <div
+                      className="code-editor-autocomplete"
+                      ref={acRef}
+                      style={{ top: acPos.top, left: acPos.left }}
+                    >
+                      {acItems.map((item, idx) => (
+                        <div
+                          key={item.label + item.kind}
+                          className={`ac-item ${idx === acIndex ? 'ac-active' : ''}`}
+                          onMouseDown={(e) => { e.preventDefault(); applyCompletion(item); }}
+                          onMouseEnter={() => setAcIndex(idx)}
+                        >
+                          <span className={`ac-icon ac-icon-${item.kind}`}>
+                            {COMPLETION_ICONS[item.kind] || '•'}
+                          </span>
+                          <span className="ac-label">{item.label}</span>
+                          {item.detail && <span className="ac-detail">{item.detail}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -279,7 +279,9 @@
   white-space: pre;
   overflow: auto;
   pointer-events: none;
-  color: transparent;
+  color: #cdd6f4;
+  tab-size: 2;
+  -moz-tab-size: 2;
 }
 
 .code-editor-textarea {
@@ -293,7 +295,7 @@
   line-height: 1.5;
   font-family: 'Consolas', 'Courier New', monospace;
   background: transparent;
-  color: #cdd6f4;
+  color: transparent;
   border: none;
   outline: none;
   resize: none;
@@ -522,6 +524,13 @@
   padding: 12px;
 }
 
+.script-runner-render-frame {
+  flex: 1;
+  border: none;
+  background: #1e1e2e;
+  width: 100%;
+}
+
 .script-runner-statusbar {
   padding: 3px 12px;
   background: #181825;
@@ -543,4 +552,76 @@
 
 .script-runner-statusbar .status-finished {
   color: #89b4fa;
+}
+
+/* ─── Autocomplete popup ─── */
+
+.code-editor-autocomplete {
+  position: absolute;
+  z-index: 200;
+  background: #1e1e2e;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  max-height: 220px;
+  overflow-y: auto;
+  min-width: 240px;
+  max-width: 400px;
+  padding: 4px 0;
+  font-size: 13px;
+  font-family: 'Consolas', 'Courier New', monospace;
+}
+
+.code-editor-autocomplete::-webkit-scrollbar {
+  width: 6px;
+}
+
+.code-editor-autocomplete::-webkit-scrollbar-thumb {
+  background: #45475a;
+  border-radius: 3px;
+}
+
+.ac-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.ac-item:hover,
+.ac-item.ac-active {
+  background: #313244;
+}
+
+.ac-icon {
+  flex-shrink: 0;
+  width: 18px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.ac-icon-keyword { color: #cba6f7; }
+.ac-icon-type { color: #f9e2af; }
+.ac-icon-builtin { color: #94e2d5; }
+.ac-icon-snippet { color: #f5c2e7; }
+.ac-icon-function { color: #89b4fa; }
+.ac-icon-property { color: #89dceb; }
+.ac-icon-identifier { color: #a6adc8; }
+
+.ac-label {
+  color: #cdd6f4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ac-detail {
+  margin-left: auto;
+  color: #585b70;
+  font-size: 11px;
+  padding-left: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
