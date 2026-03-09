@@ -1,0 +1,261 @@
+/* ───── Fluxi Run Level Editor ───── */
+
+.fre-editor {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0f172a;
+  z-index: 20;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  user-select: none;
+}
+
+/* ── Toolbar ── */
+.fre-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: #1e293b;
+  border-bottom: 1px solid #334155;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  min-height: 36px;
+}
+
+.fre-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fre-toolbar-group + .fre-toolbar-group {
+  border-left: 1px solid #334155;
+  padding-left: 6px;
+}
+
+.fre-tools {
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.fre-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #334155;
+  color: #e2e8f0;
+  border: 1px solid #475569;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.fre-btn:hover {
+  background: #475569;
+}
+
+.fre-btn-back {
+  background: #1e293b;
+  border-color: #475569;
+}
+
+.fre-btn-play {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  border-color: #22c55e;
+  color: white;
+}
+
+.fre-btn-play:hover {
+  background: linear-gradient(135deg, #4ade80, #22c55e);
+}
+
+.fre-btn-danger {
+  background: #7f1d1d;
+  border-color: #991b1b;
+  color: #fca5a5;
+}
+
+.fre-btn-danger:hover {
+  background: #991b1b;
+}
+
+.fre-tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 7px;
+  font-size: 10px;
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.fre-tool-btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+.fre-tool-btn.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #60a5fa;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+.fre-tool-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.fre-tool-label {
+  font-weight: 600;
+}
+
+.fre-theme-select {
+  padding: 4px 8px;
+  font-size: 11px;
+  background: #334155;
+  color: #e2e8f0;
+  border: 1px solid #475569;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.fre-theme-select:focus {
+  outline: none;
+  border-color: #60a5fa;
+}
+
+/* ── Canvas ── */
+.fre-canvas-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.fre-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+
+/* ── Properties Panel ── */
+.fre-props {
+  position: absolute;
+  right: 8px;
+  top: 50px;
+  background: rgba(30, 41, 59, 0.96);
+  backdrop-filter: blur(8px);
+  border: 1px solid #475569;
+  border-radius: 8px;
+  padding: 10px;
+  min-width: 180px;
+  z-index: 25;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.fre-props-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #60a5fa;
+  letter-spacing: 1px;
+}
+
+.fre-props-close {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+}
+
+.fre-props-close:hover {
+  color: #ef4444;
+}
+
+.fre-props-grid {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 4px 6px;
+  align-items: center;
+}
+
+.fre-props-grid label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.fre-props-grid input {
+  width: 100%;
+  padding: 3px 6px;
+  font-size: 11px;
+  background: #0f172a;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.fre-props-grid input:focus {
+  outline: none;
+  border-color: #60a5fa;
+}
+
+.fre-props-del {
+  width: 100%;
+  margin-top: 8px;
+  font-size: 11px;
+  padding: 5px;
+}
+
+/* ── Status Bar ── */
+.fre-status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 10px;
+  background: #1e293b;
+  border-top: 1px solid #334155;
+  font-size: 10px;
+  color: #64748b;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.fre-hint {
+  margin-left: auto;
+  color: #475569;
+  font-style: italic;
+}
+
+/* ── Editor button in main menu ── */
+.fr-editor-btn {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3) !important;
+}
+
+.fr-editor-btn:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b) !important;
+  box-shadow: 0 6px 24px rgba(245, 158, 11, 0.4) !important;
+}

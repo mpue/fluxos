@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import './FluxiRun.css';
+import FluxiRunEditor from './FluxiRunEditor';
 
 // ─── Audio ───
 const audioCtx = typeof AudioContext !== 'undefined' ? new AudioContext() : null;
@@ -31,56 +32,81 @@ const sfx = {
 };
 
 // ─── Constants ───
-const W = 640;
-const H = 400;
+import {
+  W, H, GROUND_Y, LEVEL_WIDTH_MULT,
+  Entity, Folder, Platform, MovingPlatform, FinishZone, HddPiece,
+  LevelData, LevelTheme, LEVEL_THEMES,
+} from './FluxiRunTypes';
+
+export { W, H, GROUND_Y, LEVEL_WIDTH_MULT, LEVEL_THEMES };
+export type { Entity, Folder, Platform, MovingPlatform, FinishZone, HddPiece, LevelData, LevelTheme };
+
 const GRAVITY = 0.45;
 const JUMP_FORCE = -10.5;
 const MOVE_SPEED = 4.5;
 const BULLET_SPEED = 7;
-const GROUND_Y = H - 40;
-const LEVEL_WIDTH_MULT = 10;
 
-interface Entity { x: number; y: number; w: number; h: number; }
 interface Player extends Entity { vy: number; onGround: boolean; facing: number; hp: number; maxHp: number; invincible: number; shootCooldown: number; coyoteTime: number; jumpBuffered: boolean; canDoubleJump: boolean; jumpWasReleased: boolean; }
 interface Bullet extends Entity { vx: number; }
-interface Folder extends Entity { vx: number; vy: number; hp: number; type: 'folder' | 'virus' | 'boss'; onGround: boolean; shootTimer: number; }
-interface Platform extends Entity {}
-interface MovingPlatform extends Platform { vx: number; vy: number; origX: number; origY: number; rangeX: number; rangeY: number; }
-interface FinishZone extends Entity {}
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; color: string; size: number; }
-interface HddPiece extends Entity { collected: boolean; }
 
 // ─── Level Generator ───
-function generateLevel(level: number): { platforms: Platform[]; movingPlatforms: MovingPlatform[]; enemies: Folder[]; pieces: HddPiece[]; finishZone: FinishZone } {
+// ─── Level Themes ───
+
+function getLevelTheme(level: number): LevelTheme {
+  return LEVEL_THEMES[(level - 1) % LEVEL_THEMES.length];
+}
+
+function generateLevel(level: number): { platforms: Platform[]; movingPlatforms: MovingPlatform[]; enemies: Folder[]; pieces: HddPiece[]; finishZone: FinishZone; theme: LevelTheme } {
   const platforms: Platform[] = [];
   const movingPlatforms: MovingPlatform[] = [];
   const enemies: Folder[] = [];
   const pieces: HddPiece[] = [];
+  const theme = getLevelTheme(level);
 
   const worldW = W * LEVEL_WIDTH_MULT;
 
   // Finish zone at end of level
   const finishZone: FinishZone = { x: worldW - 100, y: GROUND_Y - 80, w: 40, h: 80 };
 
-  // Ground segments with gaps
+  // ── Ground with theme-based gap frequency ──
+  const gapChance = theme === 'sky' ? 0.45 : theme === 'caves' ? 0.15 : theme === 'factory' ? 0.3 : 0.25;
+  const gapSize = theme === 'sky' ? 80 + Math.random() * 80 : 60 + Math.random() * 60;
   let gx = 0;
   while (gx < worldW) {
-    const segLen = 200 + Math.random() * 400;
+    const segLen = theme === 'sky' ? (100 + Math.random() * 200) : (200 + Math.random() * 400);
     platforms.push({ x: gx, y: GROUND_Y, w: segLen, h: 50 });
     gx += segLen;
-    // Occasional gap (not at the very start)
-    if (gx > 300 && Math.random() < 0.25) {
-      gx += 60 + Math.random() * 60;
+    if (gx > 300 && Math.random() < gapChance) {
+      gx += gapSize;
     }
   }
   // Ensure ground under finish zone
   platforms.push({ x: worldW - 160, y: GROUND_Y, w: 200, h: 50 });
 
-  const numPlats = 12 + level * 4;
+  // ── Static platforms with themed patterns ──
+  const numPlats = 15 + level * 5;
   for (let i = 0; i < numPlats; i++) {
     const px = 150 + i * ((worldW - 300) / numPlats) + Math.random() * 60;
-    const py = GROUND_Y - 60 - Math.random() * 200;
-    const pw = 70 + Math.random() * 100;
+    let py: number, pw: number;
+
+    if (theme === 'caves') {
+      // Low ceilings, narrow platforms
+      py = GROUND_Y - 40 - Math.random() * 120;
+      pw = 50 + Math.random() * 80;
+    } else if (theme === 'sky') {
+      // High platforms, varied heights
+      py = GROUND_Y - 100 - Math.random() * 220;
+      pw = 60 + Math.random() * 70;
+    } else if (theme === 'factory') {
+      // Regular staircase-like patterns
+      py = GROUND_Y - 50 - (i % 5) * 40 - Math.random() * 30;
+      pw = 80 + Math.random() * 60;
+    } else {
+      py = GROUND_Y - 60 - Math.random() * 200;
+      pw = 70 + Math.random() * 100;
+    }
+
     platforms.push({ x: px, y: py, w: pw, h: 14 });
 
     if (Math.random() < 0.55) {
@@ -88,43 +114,125 @@ function generateLevel(level: number): { platforms: Platform[]; movingPlatforms:
     }
   }
 
-  // Moving platforms — more on level 1 to make it interesting
-  const numMoving = level === 1 ? 8 : 3 + level;
+  // ── Themed platform sections ──
+  // Staircase section
+  if (theme === 'factory' || theme === 'city') {
+    const stairStart = worldW * 0.3 + Math.random() * worldW * 0.1;
+    for (let s = 0; s < 6; s++) {
+      platforms.push({ x: stairStart + s * 70, y: GROUND_Y - 50 - s * 35, w: 65, h: 14 });
+      if (s === 5) pieces.push({ x: stairStart + s * 70 + 20, y: GROUND_Y - 50 - s * 35 - 30, w: 20, h: 20, collected: false });
+    }
+  }
+
+  // Floating island cluster
+  if (theme === 'sky' || theme === 'digital') {
+    const clusterX = worldW * 0.5 + Math.random() * worldW * 0.15;
+    const clusterY = GROUND_Y - 180;
+    for (let c = 0; c < 5; c++) {
+      const cx = clusterX + (Math.random() - 0.5) * 250;
+      const cy = clusterY + (Math.random() - 0.5) * 80;
+      platforms.push({ x: cx, y: cy, w: 60 + Math.random() * 50, h: 14 });
+      pieces.push({ x: cx + 25, y: cy - 28, w: 20, h: 20, collected: false });
+    }
+  }
+
+  // Tunnel section (tight corridor)
+  if (theme === 'caves') {
+    const tunStart = worldW * 0.4 + Math.random() * worldW * 0.1;
+    for (let t = 0; t < 8; t++) {
+      // Ceiling
+      platforms.push({ x: tunStart + t * 80, y: GROUND_Y - 130, w: 80, h: 14 });
+    }
+  }
+
+  // ── Moving platforms ──
+  const numMoving = theme === 'sky' ? 10 + level : theme === 'factory' ? 8 + level : 5 + level;
   for (let i = 0; i < numMoving; i++) {
     const mx = 250 + i * ((worldW - 400) / numMoving) + Math.random() * 80;
     const my = GROUND_Y - 80 - Math.random() * 160;
     const mw = 80 + Math.random() * 60;
-    const horizontal = Math.random() < 0.6;
+    const horizontal = theme === 'factory' ? Math.random() < 0.3 : Math.random() < 0.6;
+    const speed = theme === 'sky' ? 1.5 + Math.random() * 2 : 1.2 + Math.random() * 1.5;
     movingPlatforms.push({
       x: mx, y: my, w: mw, h: 14,
       origX: mx, origY: my,
-      vx: horizontal ? (1.2 + Math.random() * 1.5) * (Math.random() < 0.5 ? 1 : -1) : 0,
-      vy: horizontal ? 0 : (0.8 + Math.random() * 1.0) * (Math.random() < 0.5 ? 1 : -1),
-      rangeX: horizontal ? 80 + Math.random() * 120 : 0,
-      rangeY: horizontal ? 0 : 40 + Math.random() * 80,
+      vx: horizontal ? speed * (Math.random() < 0.5 ? 1 : -1) : 0,
+      vy: horizontal ? 0 : (0.8 + Math.random() * 1.2) * (Math.random() < 0.5 ? 1 : -1),
+      rangeX: horizontal ? 80 + Math.random() * 140 : 0,
+      rangeY: horizontal ? 0 : 40 + Math.random() * 100,
     });
-    // Place a collectible above some moving platforms
-    if (Math.random() < 0.6) {
+    if (Math.random() < 0.5) {
       pieces.push({ x: mx + mw / 2 - 10, y: my - 30, w: 20, h: 20, collected: false });
     }
   }
 
-  // Scatter some ground-level collectibles
-  for (let i = 0; i < 5 + level; i++) {
+  // ── Ground-level collectibles ──
+  for (let i = 0; i < 8 + level * 2; i++) {
     const cx = 300 + Math.random() * (worldW - 400);
     pieces.push({ x: cx, y: GROUND_Y - 25, w: 20, h: 20, collected: false });
   }
 
-  const numEnemies = 5 + level * 3;
+  // ── Enemies with type variety based on level + theme ──
+  const numEnemies = 10 + level * 4;
   for (let i = 0; i < numEnemies; i++) {
-    const ex = 300 + i * ((worldW - 500) / numEnemies) + Math.random() * 100;
-    const isVirus = Math.random() < 0.2 + level * 0.05;
+    const ex = 250 + i * ((worldW - 500) / numEnemies) + Math.random() * 80;
+    const roll = Math.random();
+    let etype: Folder['type'];
+    let ehp: number;
+    let ew = 30, eh = 30;
+    let evx = (1 + Math.random() * 1.5) * (Math.random() < 0.5 ? 1 : -1);
+
+    if (roll < 0.05 + level * 0.02) {
+      // Firewall — stationary shield enemy, high HP
+      etype = 'firewall';
+      ehp = 3 + Math.floor(level / 2);
+      ew = 20; eh = 40;
+      evx = 0;
+    } else if (roll < 0.15 + level * 0.03) {
+      // Trojan — shoots at player
+      etype = 'trojan';
+      ehp = 2;
+      ew = 32; eh = 32;
+      evx = (0.5 + Math.random()) * (Math.random() < 0.5 ? 1 : -1);
+    } else if (roll < 0.30 + level * 0.02) {
+      // Worm — fast, small, jumps
+      etype = 'worm';
+      ehp = 1;
+      ew = 22; eh = 18;
+      evx = (2.5 + Math.random() * 2) * (Math.random() < 0.5 ? 1 : -1);
+    } else if (roll < 0.50) {
+      // Virus
+      etype = 'virus';
+      ehp = 2;
+    } else {
+      // Folder (basic)
+      etype = 'folder';
+      ehp = 1;
+    }
+
+    // Theme-based tweaks
+    if (theme === 'caves' && etype === 'folder') evx *= 0.7; // slower in caves
+    if (theme === 'sky' && etype === 'worm') evx *= 1.3; // faster in sky
+
     enemies.push({
-      x: ex, y: GROUND_Y - 32, w: 30, h: 30,
-      vx: (1 + Math.random() * 1.5) * (Math.random() < 0.5 ? 1 : -1),
-      vy: 0, hp: isVirus ? 2 : 1,
-      type: isVirus ? 'virus' : 'folder',
-      onGround: true, shootTimer: 0,
+      x: ex, y: GROUND_Y - eh - 2, w: ew, h: eh,
+      vx: evx, vy: 0, hp: ehp,
+      type: etype, onGround: true, shootTimer: 0,
+    });
+  }
+
+  // Place some enemies on elevated platforms
+  const elevatedPlats = platforms.filter(p => p.y < GROUND_Y - 30 && p.w > 70);
+  const numElevated = Math.min(elevatedPlats.length, 3 + level);
+  for (let i = 0; i < numElevated; i++) {
+    const plat = elevatedPlats[Math.floor(Math.random() * elevatedPlats.length)];
+    const roll = Math.random();
+    const etype: Folder['type'] = roll < 0.3 ? 'trojan' : roll < 0.5 ? 'virus' : 'folder';
+    enemies.push({
+      x: plat.x + plat.w / 2 - 15, y: plat.y - 32, w: 30, h: 30,
+      vx: (0.8 + Math.random()) * (Math.random() < 0.5 ? 1 : -1),
+      vy: 0, hp: etype === 'virus' ? 2 : etype === 'trojan' ? 2 : 1,
+      type: etype, onGround: true, shootTimer: 0,
     });
   }
 
@@ -137,16 +245,17 @@ function generateLevel(level: number): { platforms: Platform[]; movingPlatforms:
     });
   }
 
-  return { platforms, movingPlatforms, enemies, pieces, finishZone };
+  return { platforms, movingPlatforms, enemies, pieces, finishZone, theme };
 }
 
 // ─── Component ───
 const FluxiRun: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [gameState, setGameState] = useState<'menu' | 'playing' | 'gameover' | 'win'>('menu');
+  const [gameState, setGameState] = useState<'menu' | 'playing' | 'gameover' | 'win' | 'editor'>('menu');
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
   const [muted, setMuted] = useState(false);
+  const [customLevel, setCustomLevel] = useState<LevelData | null>(null);
   const keys = useRef<Set<string>>(new Set());
   const bgMusic = useRef<HTMLAudioElement | null>(null);
   const gameRef = useRef<{
@@ -154,7 +263,7 @@ const FluxiRun: React.FC = () => {
     platforms: Platform[]; movingPlatforms: MovingPlatform[]; particles: Particle[]; pieces: HddPiece[];
     camera: number; score: number; level: number; running: boolean;
     enemyBullets: Bullet[]; bossDefeated: boolean;
-    finishZone: FinishZone;
+    finishZone: FinishZone; theme: LevelTheme;
     frameId: number;
   } | null>(null);
 
@@ -189,8 +298,13 @@ const FluxiRun: React.FC = () => {
     }
   }, [gameState, muted]);
 
-  const initGame = useCallback((lvl: number, prevScore: number) => {
-    const { platforms, movingPlatforms, enemies, pieces, finishZone } = generateLevel(lvl);
+  const initGame = useCallback((lvl: number, prevScore: number, customData?: LevelData) => {
+    const levelData = customData || generateLevel(lvl);
+    const { platforms, movingPlatforms, enemies, pieces, finishZone, theme } = levelData;
+    // Deep-clone enemies/pieces so replaying works
+    const clonedEnemies = enemies.map(e => ({ ...e }));
+    const clonedPieces = pieces.map(p => ({ ...p, collected: false }));
+    const clonedMoving = movingPlatforms.map(m => ({ ...m }));
     gameRef.current = {
       player: {
         x: 40, y: GROUND_Y - 40, w: 24, h: 36,
@@ -199,10 +313,10 @@ const FluxiRun: React.FC = () => {
         coyoteTime: 0, jumpBuffered: false,
         canDoubleJump: true, jumpWasReleased: true,
       },
-      bullets: [], enemies, platforms, movingPlatforms, particles: [],
-      pieces, camera: 0, score: prevScore, level: lvl,
+      bullets: [], enemies: clonedEnemies, platforms: [...platforms], movingPlatforms: clonedMoving, particles: [],
+      pieces: clonedPieces, camera: 0, score: prevScore, level: lvl,
       running: true, enemyBullets: [], bossDefeated: false,
-      finishZone,
+      finishZone: { ...finishZone }, theme,
       frameId: 0,
     };
     setScore(prevScore);
@@ -345,17 +459,37 @@ const FluxiRun: React.FC = () => {
           }
         }
 
-        // Reverse on edges or set bounds
-        if (e.type !== 'boss') {
-          if (e.x < 10 || e.x + e.w > W * LEVEL_WIDTH_MULT - 10) e.vx *= -1;
-        } else {
-          // Boss: move towards player
+        // Enemy type-specific AI
+        if (e.type === 'boss') {
           e.vx = p.x > e.x ? 1.2 : -1.2;
           e.shootTimer++;
           if (e.shootTimer > 60) {
             e.shootTimer = 0;
             g.enemyBullets.push({ x: e.x, y: e.y + 20, w: 10, h: 6, vx: p.x > e.x ? 4 : -4 });
           }
+        } else if (e.type === 'trojan') {
+          // Trojan: patrols and shoots at player when in range
+          if (e.x < 10 || e.x + e.w > W * LEVEL_WIDTH_MULT - 10) e.vx *= -1;
+          const dist = Math.abs(p.x - e.x);
+          if (dist < 300) {
+            e.shootTimer++;
+            if (e.shootTimer > 80) {
+              e.shootTimer = 0;
+              g.enemyBullets.push({ x: e.x + e.w / 2, y: e.y + 10, w: 8, h: 5, vx: p.x > e.x ? 3.5 : -3.5 });
+            }
+          }
+        } else if (e.type === 'worm') {
+          // Worm: fast, random jumps
+          if (e.x < 10 || e.x + e.w > W * LEVEL_WIDTH_MULT - 10) e.vx *= -1;
+          if (e.onGround && Math.random() < 0.02) {
+            e.vy = -8 - Math.random() * 3;
+          }
+        } else if (e.type === 'firewall') {
+          // Firewall: stationary, doesn't move
+          e.vx = 0;
+        } else {
+          // Folder/Virus: standard patrol
+          if (e.x < 10 || e.x + e.w > W * LEVEL_WIDTH_MULT - 10) e.vx *= -1;
         }
 
         // Player collision with enemy
@@ -367,7 +501,7 @@ const FluxiRun: React.FC = () => {
             if (!mutedRef.current) sfx.hitEnemy();
             if (e.hp <= 0) {
               spawnParticles(e.x + e.w / 2, e.y + e.h / 2, e.type === 'boss' ? '#ff0000' : '#f59e0b', e.type === 'boss' ? 30 : 12);
-              g.score += e.type === 'boss' ? 500 : e.type === 'virus' ? 200 : 100;
+              g.score += e.type === 'boss' ? 500 : e.type === 'virus' ? 200 : e.type === 'trojan' ? 250 : e.type === 'worm' ? 150 : e.type === 'firewall' ? 300 : 100;
               if (e.type === 'boss') {
                 g.bossDefeated = true;
                 if (!mutedRef.current) sfx.bossHit();
@@ -394,7 +528,7 @@ const FluxiRun: React.FC = () => {
             if (!mutedRef.current) sfx.hitEnemy();
             if (e.hp <= 0) {
               spawnParticles(e.x + e.w / 2, e.y + e.h / 2, e.type === 'boss' ? '#ff0000' : '#f59e0b', e.type === 'boss' ? 30 : 12);
-              g.score += e.type === 'boss' ? 500 : e.type === 'virus' ? 200 : 100;
+              g.score += e.type === 'boss' ? 500 : e.type === 'virus' ? 200 : e.type === 'trojan' ? 250 : e.type === 'worm' ? 150 : e.type === 'firewall' ? 300 : 100;
               if (e.type === 'boss') {
                 g.bossDefeated = true;
                 if (!mutedRef.current) sfx.bossHit();
@@ -451,7 +585,11 @@ const FluxiRun: React.FC = () => {
       // Level complete: player reaches the finish zone
       if (collides(p, g.finishZone)) {
         g.running = false;
-        if (g.level >= 9) {
+        if (customLevel) {
+          // Custom level — just win
+          if (!mutedRef.current) sfx.win();
+          setGameState('win');
+        } else if (g.level >= 9) {
           if (!mutedRef.current) sfx.win();
           setGameState('win');
         } else {
@@ -468,20 +606,47 @@ const FluxiRun: React.FC = () => {
       if (!g) return;
       const cam = g.camera;
 
-      // Sky gradient
+      // Sky gradient — themed
       const grad = ctx.createLinearGradient(0, 0, 0, H);
-      grad.addColorStop(0, '#0f172a');
-      grad.addColorStop(0.5, '#1e293b');
-      grad.addColorStop(1, '#334155');
+      if (g.theme === 'caves') {
+        grad.addColorStop(0, '#1a1207'); grad.addColorStop(0.5, '#2d1f0e'); grad.addColorStop(1, '#3d2914');
+      } else if (g.theme === 'sky') {
+        grad.addColorStop(0, '#0c1445'); grad.addColorStop(0.5, '#1e3a6e'); grad.addColorStop(1, '#4a7ab5');
+      } else if (g.theme === 'factory') {
+        grad.addColorStop(0, '#1a1a2e'); grad.addColorStop(0.5, '#2a2a3e'); grad.addColorStop(1, '#3a3a4e');
+      } else if (g.theme === 'digital') {
+        grad.addColorStop(0, '#0a0a1a'); grad.addColorStop(0.5, '#0d1b2a'); grad.addColorStop(1, '#1b2838');
+      } else {
+        grad.addColorStop(0, '#0f172a'); grad.addColorStop(0.5, '#1e293b'); grad.addColorStop(1, '#334155');
+      }
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
 
-      // Stars
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      for (let i = 0; i < 50; i++) {
-        const sx = ((i * 137 + 47) % W + (cam * 0.1 * ((i % 3) + 1)) % W + W) % W;
-        const sy = (i * 73 + 31) % (H * 0.6);
-        ctx.fillRect(sx, sy, 1.5, 1.5);
+      // Stars / background elements
+      if (g.theme === 'digital') {
+        // Matrix-like falling characters
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
+        ctx.font = '10px monospace';
+        for (let i = 0; i < 30; i++) {
+          const sx = ((i * 137 + 47) % W + (cam * 0.05 * ((i % 3) + 1)) % W + W) % W;
+          const sy = ((i * 73 + 31 + Date.now() / 50 * ((i % 3) + 1)) % (H + 20));
+          ctx.fillText(String.fromCharCode(0x30A0 + Math.floor(((i * 17 + Date.now() / 500) % 96))), sx, sy);
+        }
+      } else if (g.theme === 'caves') {
+        // Stalactites in background
+        ctx.fillStyle = 'rgba(139, 92, 42, 0.15)';
+        for (let i = 0; i < 20; i++) {
+          const sx = ((i * 173 + 23) % W + (cam * 0.08) % W + W) % W;
+          const sh = 15 + (i * 37 % 30);
+          ctx.fillRect(sx, 0, 4, sh);
+        }
+      } else {
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        for (let i = 0; i < 50; i++) {
+          const sx = ((i * 137 + 47) % W + (cam * 0.1 * ((i % 3) + 1)) % W + W) % W;
+          const sy = (i * 73 + 31) % (H * 0.6);
+          ctx.fillRect(sx, sy, 1.5, 1.5);
+        }
       }
 
       ctx.save();
@@ -641,6 +806,55 @@ const FluxiRun: React.FC = () => {
           ctx.fillStyle = '#fbbf24';
           ctx.font = 'bold 9px monospace';
           ctx.fillText('BÖSER USER', e.x - 5, e.y - 28);
+        } else if (e.type === 'trojan') {
+          // Trojan — dark green armored folder with crosshair
+          ctx.fillStyle = '#14532d';
+          ctx.fillRect(e.x, e.y + 6, e.w, e.h - 6);
+          ctx.fillStyle = '#166534';
+          ctx.fillRect(e.x, e.y, e.w * 0.5, 8);
+          ctx.fillRect(e.x, e.y + 6, e.w, 4);
+          // Shield symbol
+          ctx.fillStyle = '#4ade80';
+          ctx.fillRect(e.x + 8, e.y + 12, 16, 14);
+          ctx.fillStyle = '#14532d';
+          ctx.fillRect(e.x + 12, e.y + 14, 8, 4);
+          ctx.fillRect(e.x + 14, e.y + 12, 4, 10);
+          // Red targeting eye
+          ctx.fillStyle = '#ef4444';
+          ctx.fillRect(e.x + 14, e.y + 14, 4, 4);
+        } else if (e.type === 'worm') {
+          // Worm — small, segmented, green
+          const wave = Math.sin(Date.now() / 100 + e.x) * 2;
+          ctx.fillStyle = '#84cc16';
+          ctx.fillRect(e.x, e.y + wave, e.w * 0.35, e.h);
+          ctx.fillStyle = '#65a30d';
+          ctx.fillRect(e.x + e.w * 0.3, e.y - wave, e.w * 0.35, e.h);
+          ctx.fillStyle = '#84cc16';
+          ctx.fillRect(e.x + e.w * 0.6, e.y + wave, e.w * 0.4, e.h);
+          // Eyes
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(e.x + e.w - 8, e.y + wave + 2, 4, 4);
+          ctx.fillStyle = '#000';
+          ctx.fillRect(e.x + e.w - 7, e.y + wave + 3, 2, 2);
+        } else if (e.type === 'firewall') {
+          // Firewall — tall red/orange barrier with flame effect
+          ctx.fillStyle = '#991b1b';
+          ctx.fillRect(e.x, e.y, e.w, e.h);
+          ctx.fillStyle = '#dc2626';
+          ctx.fillRect(e.x + 2, e.y + 2, e.w - 4, e.h - 4);
+          // Flame animation
+          const flicker = Math.sin(Date.now() / 80 + e.x) * 3;
+          ctx.fillStyle = '#f97316';
+          ctx.fillRect(e.x + 3, e.y - 6 + flicker, 5, 8);
+          ctx.fillRect(e.x + e.w - 8, e.y - 8 - flicker, 5, 10);
+          ctx.fillRect(e.x + e.w / 2 - 3, e.y - 10 + flicker * 0.5, 6, 12);
+          ctx.fillStyle = '#fbbf24';
+          ctx.fillRect(e.x + 4, e.y - 3 + flicker, 3, 5);
+          ctx.fillRect(e.x + e.w - 7, e.y - 5 - flicker, 3, 6);
+          // "FIREWALL" text
+          ctx.fillStyle = '#fbbf24';
+          ctx.font = 'bold 6px monospace';
+          ctx.fillText('FW', e.x + 3, e.y + e.h / 2 + 2);
         } else if (e.type === 'virus') {
           // Virus folder (purple)
           ctx.fillStyle = '#7c3aed';
@@ -806,7 +1020,8 @@ const FluxiRun: React.FC = () => {
     };
   }, []);
 
-  const startGame = () => initGame(1, 0);
+  const startGame = () => { setCustomLevel(null); initGame(1, 0); };
+  const playCustomLevel = (data: LevelData) => { setCustomLevel(data); initGame(1, 0, data); };
 
   return (
     <div className="fluxi-run">
@@ -823,6 +1038,7 @@ const FluxiRun: React.FC = () => {
               Nur Fluxi kann sie aufhalten!
             </div>
             <button className="fr-start-btn" onClick={startGame}>▶ Spiel starten</button>
+            <button className="fr-start-btn fr-editor-btn" onClick={() => setGameState('editor')}>🛠 Level Editor</button>
             <div className="fr-controls">
               <span>← → / A D — Bewegen</span>
               <span>↑ / W / Leertaste — Springen</span>
@@ -838,6 +1054,7 @@ const FluxiRun: React.FC = () => {
             <div className="fr-subtitle">Die Ordner-Armee hat gewonnen...</div>
             <div className="fr-final-score">Punkte: {score}</div>
             <button className="fr-start-btn" onClick={startGame}>🔄 Nochmal spielen</button>
+            <button className="fr-start-btn fr-editor-btn" onClick={() => setGameState('menu')}>🏠 Hauptmenü</button>
           </div>
         )}
 
@@ -847,7 +1064,15 @@ const FluxiRun: React.FC = () => {
             <div className="fr-subtitle">Fluxi hat die Festplatte gerettet!</div>
             <div className="fr-final-score">Endpunktzahl: {score}</div>
             <button className="fr-start-btn" onClick={startGame}>🔄 Nochmal spielen</button>
+            <button className="fr-start-btn fr-editor-btn" onClick={() => setGameState('menu')}>🏠 Hauptmenü</button>
           </div>
+        )}
+
+        {gameState === 'editor' && (
+          <FluxiRunEditor
+            onPlay={playCustomLevel}
+            onBack={() => setGameState('menu')}
+          />
         )}
       </div>
       <div className="fr-statusbar">
