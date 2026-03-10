@@ -33,6 +33,7 @@ export const APP_REGISTRY: AppInfo[] = [
   { id: 'video-player', name: 'Video Player', icon: '🎬', category: 'Multimedia', description: 'Videos abspielen', size: '4.2 MB', version: '1.0.0', isSystem: false },
   { id: 'terminal', name: 'Terminal', icon: '>_', category: 'System', description: 'Linux-kompatible Terminalemulation', size: '2.5 MB', version: '2.0.0', isSystem: true },
   { id: 'code-editor', name: 'Code Editor', icon: '</>', category: 'Entwicklung', description: 'Code-Editor mit Syntax-Highlighting und Skript-Ausführung', size: '4.8 MB', version: '1.0.0', isSystem: false },
+  { id: 'game-2048', name: '2048', icon: '🧩', category: 'Spiele', description: 'Zahlen-Puzzle – erreiche die 2048!', size: '1.5 MB', version: '1.0.0', isSystem: false },
 ];
 
 const STORAGE_KEY = 'fluxos-installed-apps';

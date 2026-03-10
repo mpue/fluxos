@@ -20,6 +20,7 @@ import VectorEditor from './VectorEditor';
 import VideoPlayer from './VideoPlayer';
 import AppManager, { getInstalledApps } from './AppManager';
 import CodeEditor from './CodeEditor';
+import Game2048 from './Game2048';
 import PieMenu, { PieMenuItem } from './PieMenu';
 import SystemInfo from './SystemInfo';
 import { DesktopIcon as DesktopIconType } from '../types/desktop';
@@ -403,6 +404,23 @@ const Desktop: React.FC = () => {
           isMinimized: false,
           isMaximized: false,
           content: <CodeEditor />,
+        });
+      },
+    },
+    {
+      id: 'game-2048',
+      name: '2048',
+      icon: '🧩',
+      position: savedPositions['game-2048'] || { x: 200, y: 320 },
+      onDoubleClick: () => {
+        addWindow({
+          title: '2048',
+          icon: '🧩',
+          position: { x: 250, y: 80 },
+          size: { width: 420, height: 520 },
+          isMinimized: false,
+          isMaximized: false,
+          content: <Game2048 />,
         });
       },
     },
